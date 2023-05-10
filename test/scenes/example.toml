@@ -1,0 +1,12 @@
+# this is an example scene file
+[mesh]
+file = "..\models\cube.obj"
+
+
+[scene]
+objects = {
+	#				x	y	w	h
+	["primitive:rectangle", [10,	5,	5,	3]]
+	#				x	y	r
+	{"primitive:circle", [-5,	2,	3]}
+}
