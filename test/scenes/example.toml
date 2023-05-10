@@ -4,9 +4,9 @@ file = "..\models\cube.obj"
 
 
 [scene]
-objects = {
+objects = [
 	#				x	y	w	h	r g b
-	["primitive:rectangle", [10,	5,	5,	3], [0,0,200]]
+	["primitive:rectangle", [10,	5,	5,	3], [0,0,200]],
 	#				x	y	r	r g b
-	{"primitive:circle", [-5,	2,	3], [0,150,0]}
-}
+	["primitive:circle", [-5,	2,	3], [0,150,0]]
+]
