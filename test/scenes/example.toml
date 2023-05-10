@@ -1,12 +1,12 @@
 # this is an example scene file
 [mesh]
-file = "..\models\cube.obj"
+file = "..\\models\\sphere_ico_4.obj" # relative to this file
 
 
 [scene]
 objects = [
 	#				x	y	w	h	r g b
-	["primitive:rectangle", [10,	5,	5,	3], [0,0,200]],
+	{name = "primitive:rectangle", vars = [10,	5,	5,	3], col = [0,0,200]},
 	#				x	y	r	r g b
-	["primitive:circle", [-5,	2,	3], [0,150,0]]
+	{name ="primitive:circle", vars = [-5,	2,	3], col = [0,150,0]}
 ]
