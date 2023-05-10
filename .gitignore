@@ -1,3 +1,5 @@
+CMakeLists.txt
+
 ### C++ template
 # Compiled Object files
 *.slo
