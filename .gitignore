@@ -76,3 +76,7 @@ crashlytics-build.properties
 fabric.properties
 # Project exclude paths
 /cmake-build-debug/
+/build/
+
+# VS code
+/.vscode/
