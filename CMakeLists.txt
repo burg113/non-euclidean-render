@@ -6,4 +6,4 @@ set(CMAKE_CXX_STANDARD 17)
 add_executable(non_euclidean_render 
     main.cpp
     stbi_impl.cpp
-)
+        src/TomlParser.cpp src/TomlParser.h src/OBJ_parser.cpp src/OBJ_parser.h)
