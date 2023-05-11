@@ -7,11 +7,12 @@
 #include <iostream>
 #include <filesystem>
 #include <regex>
+#include "MathUtil.h"
 
 struct OBJ_parser {
-    std::vector<std::tuple<float,float,float>> vertices;
-    std::vector<std::tuple<float,float,float>> normals;
-    std::vector<std::tuple<float,float>> textureCords;
+    std::vector<Vec3d> vertices;
+    std::vector<Vec3d> normals;
+    std::vector<Vec2d> textureCords;
 
     std::vector<std::tuple<int,int,int>> triangle_vertices;
     std::vector<std::tuple<int,int,int>> triangle_normals;
