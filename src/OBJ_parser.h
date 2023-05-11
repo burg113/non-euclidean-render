@@ -6,6 +6,7 @@
 #define NON_EUCLIDEAN_RENDER_OBJ_PARSER_H
 #include <iostream>
 #include <filesystem>
+#include <regex>
 
 struct OBJ_parser {
     std::vector<std::tuple<float,float,float>> vertices;
@@ -16,12 +17,14 @@ struct OBJ_parser {
     std::vector<std::tuple<int,int,int>> triangle_normals;
     std::vector<std::tuple<int,int,int>> triangle_textureCords;
 
-public:
-    void loadFromFile(std::string path);
+    void loadFromFile(std::string path) noexcept(false);
 
 
 private:
-    std::vector<std::string> getParts(std::string str, char delim);
+    static const std::regex vertexRegex;
+    static const std::regex normalRegex;
+    static const std::regex textureRegex;
+    static const std::regex triangleRegex;
 };
 
 
