@@ -1,3 +1,4 @@
 # this is an example scene file
 [mesh]
-file = "../models/sphere_ico_4.obj" # relative to this file
+# file = "../models/cube.obj"
+file = "../models/sphere_ico_256.obj" # relative to this file
