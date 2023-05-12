@@ -39,6 +39,7 @@ struct Vec2d{
     Vec2d operator- (Vec2d other);
 };
 
+ostream& operator<<(ostream &stream, Vec3d v);
 ostream& operator<<(ostream &stream, Vec2d v);
 
 struct Mat2d{

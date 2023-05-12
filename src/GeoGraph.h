@@ -14,11 +14,15 @@ struct Triangle{
     // add 3 if other direction (i+1 -> i)
     pair<int, short> shared[3];
 
+    Vec3d normal3d;
+
     // (distance, side)
     pair<float, short> rayIntersect(Vec2d pos, Vec2d dir);
 
     Vec2d getMid();
 };
+
+ostream& operator<<(ostream &stream, Triangle triangle);
 
 struct GeoGraph{
     vector<Triangle> triangles;

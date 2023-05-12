@@ -16,7 +16,8 @@ pair<float, short> Triangle::rayIntersect(Vec2d pos, Vec2d dir){
         Vec2d normal = (vert[i]-vert[(i+1)%3]).perp().normalized();
         if(normal.dot(dir) > 0 && dist < minDist){
             if(dist < 0){
-                throw invalid_argument("Ray-cast started outside of triangle?");
+                dist = 0;
+//                throw invalid_argument("Ray-cast started outside of triangle?");
             }
             minDist = dist;
             side = i;
@@ -29,9 +30,17 @@ pair<float, short> Triangle::rayIntersect(Vec2d pos, Vec2d dir){
 }
 
 Vec2d Triangle::getMid() {
-    return ((vert[0] + vert[1]) * 0.5 + vert[2]) * 0.5;
+//    return ((vert[0] + vert[1]) * 0.5 + vert[2]) * 0.5;
+    return (vert[0] + vert[1] + vert[2]) * (1.0f/3);
 }
 
+ostream& operator<<(ostream &stream, Triangle triangle){
+    stream << "===============================\n";
+    stream << "A: " << triangle.vert[0] << "  B: " << triangle.vert[1] << "  C: " << triangle.vert[2] << "\n";
+    stream << "AB = " << (triangle.vert[1]-triangle.vert[0]).len() << "  BC = " <<
+    (triangle.vert[2]-triangle.vert[1]).len() << "  CA = " << (triangle.vert[0]-triangle.vert[2]).len() << "\n";
+    return stream;
+}
 
 GeoGraph::GeoGraph(vector<Vec3d> vertices, vector<tuple<int, int, int>> triangleVerts) {
     int n = (int)triangleVerts.size();
@@ -63,6 +72,8 @@ GeoGraph::GeoGraph(vector<Vec3d> vertices, vector<tuple<int, int, int>> triangle
         Vec3d a3 = vertices[ind0];
         Vec3d b3 = vertices[ind1];
         Vec3d c3 = vertices[ind2];
+//        cout << a3 << " " << b3 << " " << c3 << "\n";
+//        cout << "dists: " << (a3-b3).len() << " " << (b3-c3).len() << " " << (a3-c3).len() << "\n";
         Vec3d aToB = b3-a3;
         Vec3d aToC = c3-a3;
         Vec3d v = aToB.normalized();
@@ -71,7 +82,7 @@ GeoGraph::GeoGraph(vector<Vec3d> vertices, vector<tuple<int, int, int>> triangle
         triangles[i].vert[0] = {0, 0};
         triangles[i].vert[1] = {aToB.len(), 0};
         triangles[i].vert[2] = {v.dot(aToC), w.dot(aToC)};
-
+        triangles[i].normal3d = normal;
 //        cout << a3.x << " " << a3.y << " " << a3.z << "\n";
 //        cout << b3.x << " " << b3.y << " " << b3.z << "\n";
 //        cout << c3.x << " " << c3.y << " " << c3.z << "\n";

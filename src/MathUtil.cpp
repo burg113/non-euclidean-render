@@ -58,6 +58,9 @@ Vec2d Vec2d::operator- (Vec2d other){
     return {x-other.x, y-other.y};
 }
 
+ostream& operator<<(ostream &stream, Vec3d v){
+    return stream << "(" << v.x << ", " << v.y << ", " << v.z << ")";
+}
 ostream& operator<<(ostream &stream, Vec2d v){
     return stream << "(" << v.x << ", " << v.y << ")";
 }

@@ -33,8 +33,9 @@ int main(int argc, char **argv) {
     vector<u8> data(w * h * comp);
     State state;
     state.tri = 0;
-    state.pos = graph.triangles[0].getMid();
-    const float scale = 0.05;
+    state.pos = graph.triangles[state.tri].getMid();
+//    cout << graph.triangles[state.tri] << "\n";
+    const float scale = 0.02;
     set<int> triangleSet;
     for(int i = 0; i < h; i++){
         for(int j = 0; j < w; j++){
@@ -43,11 +44,14 @@ int main(int argc, char **argv) {
             float dist = state.dir.len();
             state.dir = state.dir.normalized();
             State res = graph.traverse(state, dist);
-            int t = res.tri;
-            triangleSet.insert(t);
-            data[3*(w * i + j)]   = (42 * t) % 255;
-            data[3*(w * i + j) + 1] = (244 * (t==0)) % 255;
-            data[3*(w * i + j) + 2] = (143 * t + 42) % 255;
+            Vec3d normal3d = graph.triangles[res.tri].normal3d;
+//            triangleSet.insert(res.tri);
+            if(res.tri != state.tri){
+                data[3*(w * i + j)]     = u8(127 + 120 * normal3d.x);
+                data[3*(w * i + j) + 1] = u8(127 + 120 * normal3d.y);
+                data[3*(w * i + j) + 2] = u8(127 + 120 * normal3d.z);
+
+            }
         }
     }
 //    for(int i : triangleSet) cout << i << "\n";
