@@ -4,6 +4,7 @@
 #include <tuple>
 #include <cmath>
 #include <map>
+#include <iostream>
 
 using namespace std;
 
@@ -37,6 +38,8 @@ struct Vec2d{
     Vec2d operator+ (Vec2d other);
     Vec2d operator- (Vec2d other);
 };
+
+ostream& operator<<(ostream &stream, Vec2d v);
 
 struct Mat2d{
     Vec2d v1, v2;

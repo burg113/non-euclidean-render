@@ -5,6 +5,7 @@
 #include "src/GeoGraph.h"
 #include "lib/stb_image_write.h"
 #include <filesystem>
+#include <set>
 
 typedef unsigned char u8;
 
@@ -15,7 +16,6 @@ using namespace std;
 
 
 int main(int argc, char **argv) {
-
     string fileDir;
     if (argc > 1)
         fileDir = argv[1];
@@ -26,13 +26,16 @@ int main(int argc, char **argv) {
     OBJ_parser objParser;
     objParser.loadFromFile(configParser.meshPath);
 
+
+    cout << objParser.triangle_vertices.size() << "\n";
     GeoGraph graph(objParser.vertices, objParser.triangle_vertices);
     int w = 100, h = 100, comp = 3;
     vector<u8> data(w * h * comp);
     State state;
     state.tri = 0;
     state.pos = graph.triangles[0].getMid();
-    const float scale = 0.001;
+    const float scale = 3;
+    set<int> triangleSet;
     for(int i = 0; i < h; i++){
         for(int j = 0; j < w; j++){
             state.dir.x = (j - w / 2.0f) * scale;
@@ -41,11 +44,13 @@ int main(int argc, char **argv) {
             state.dir = state.dir.normalize();
             State res = graph.traverse(state, dist);
             int t = res.tri;
+            triangleSet.insert(t);
             data[3*(w * i + j)]   = (42 * t) % 255;
             data[3*(w * i + j) + 1] = (13 * t + 1) % 255;
             data[3*(w * i + j) + 2] = (143 * t + 42) % 255;
         }
     }
+    for(int i : triangleSet) cout << i << "\n";
 
     stbi_write_png("rendered.png", w, h, comp, data.data(), 0);
     /*for (auto a : objParser.vertices) {

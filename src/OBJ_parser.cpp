@@ -26,7 +26,6 @@ void OBJ_parser::loadFromFile(string path) {
     while (getline(file,line)) {
         smatch matches;
         if (std::regex_match(line, matches, triangleRegex)) { // triangle
-            for (auto a : matches)
             triangle_vertices.emplace_back(stoi(matches.str(1)), stoi(matches.str(4)), stoi(matches.str(7)));
             triangle_textureCords.emplace_back(stoi(matches.str(2)), stoi(matches.str(5)), stoi(matches.str(8)));
             triangle_normals.emplace_back(stoi(matches.str(3)), stoi(matches.str(6)), stoi(matches.str(9)));

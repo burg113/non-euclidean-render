@@ -18,6 +18,9 @@ pair<float, short> Triangle::rayIntersect(Vec2d pos, Vec2d dir){
             side = i;
         }
     }
+    if(side == -1){
+        throw 42;
+    }
     return {minDist, side};
 }
 
@@ -79,6 +82,7 @@ State GeoGraph::traverse(State state, float dist){
         return state;
     }
     dist -= untilHit;
+    state.pos = state.pos + state.dir*untilHit;
     state.tri = myTri.shared[side].first;
     // adjust direction
     Triangle nextTri = triangles[myTri.shared[side].first];
@@ -94,7 +98,7 @@ State GeoGraph::traverse(State state, float dist){
     Vec2d from = (myA - myB).normalize();
     Vec2d fp = from.perp();
     Vec2d to = (toA - toB).normalize();
-    Mat2d mat = Mat2d{{from.x, fp.x}, {from.y, fp.y}} * Mat2d{to, to.perp()};
+    Mat2d mat = Mat2d{to, to.perp()} * Mat2d{{from.x, fp.x}, {from.y, fp.y}};
     state.dir = mat * state.dir;
     // adjust position
     state.pos = toB + to * (from.dot(state.pos));
