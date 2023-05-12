@@ -34,14 +34,14 @@ int main(int argc, char **argv) {
     State state;
     state.tri = 0;
     state.pos = graph.triangles[0].getMid();
-    const float scale = 3;
+    const float scale = 0.03;
     set<int> triangleSet;
     for(int i = 0; i < h; i++){
         for(int j = 0; j < w; j++){
             state.dir.x = (j - w / 2.0f) * scale;
             state.dir.y = (h / 2.0f - i) * scale;
             float dist = state.dir.len();
-            state.dir = state.dir.normalize();
+            state.dir = state.dir.normalized();
             State res = graph.traverse(state, dist);
             int t = res.tri;
             triangleSet.insert(t);

@@ -61,12 +61,17 @@ GeoGraph::GeoGraph(vector<Vec3d> vertices, vector<tuple<int, int, int>> triangle
         Vec3d c3 = vertices[ind2];
         Vec3d aToB = b3-a3;
         Vec3d aToC = c3-a3;
-        Vec3d v = aToB.normalize();
-        Vec3d normal = v.cross(aToC.normalize());
-        Vec3d w = normal.cross(v);
+        Vec3d v = aToB.normalized();
+        Vec3d normal = v.cross(aToC.normalized()).normalized();
+        Vec3d w = normal.cross(v).normalized();
         triangles[i].vert[0] = {0, 0};
         triangles[i].vert[1] = {aToB.len(), 0};
         triangles[i].vert[2] = {v.dot(aToC), w.dot(aToC)};
+
+        cout << a3.x << " " << a3.y << " " << a3.z << "\n";
+        cout << b3.x << " " << b3.y << " " << b3.z << "\n";
+        cout << c3.x << " " << c3.y << " " << c3.z << "\n";
+        cout << aToB.len() << " " << aToC.len() << "\n";
         // corresponding edges
         processEdge(ind0, ind1, i, 0);
         processEdge(ind1, ind2, i, 1);
@@ -95,13 +100,14 @@ State GeoGraph::traverse(State state, float dist){
     Vec2d myA = myTri.vert[(side+1)%3], myB = myTri.vert[side];
     Vec2d toA = nextTri.vert[(nextSide+1)%3], toB = nextTri.vert[nextSide];
     if(negate) swap(toA, toB);
-    Vec2d from = (myA - myB).normalize();
-    Vec2d fp = from.perp();
-    Vec2d to = (toA - toB).normalize();
-    Mat2d mat = Mat2d{to, to.perp()} * Mat2d{{from.x, fp.x}, {from.y, fp.y}};
+    Vec2d my = (myA - myB).normalized();
+    Vec2d myPerp = my.perp();
+    Vec2d to = (toA - toB).normalized();
+    Mat2d mat = Mat2d{to, to.perp()} * Mat2d{{my.x, myPerp.x}, {my.y, myPerp.y}};
+    Vec2d temp = mat * my;
     state.dir = mat * state.dir;
     // adjust position
-    state.pos = toB + to * (from.dot(state.pos));
+    state.pos = toB + to * (my.dot(state.pos - myB));
 
     return traverse(state, dist);
 }

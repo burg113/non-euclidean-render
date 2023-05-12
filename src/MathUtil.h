@@ -18,7 +18,7 @@ struct Vec3d{
     float dot(Vec3d other);
     float lenSq();
     float len();
-    Vec3d normalize();
+    Vec3d normalized();
     Vec3d operator* (float lambda);
     Vec3d operator+ (Vec3d other);
     Vec3d operator- (Vec3d other);
@@ -33,7 +33,7 @@ struct Vec2d{
     Vec2d perp();
     float lenSq();
     float len();
-    Vec2d normalize();
+    Vec2d normalized();
     Vec2d operator* (float lambda);
     Vec2d operator+ (Vec2d other);
     Vec2d operator- (Vec2d other);

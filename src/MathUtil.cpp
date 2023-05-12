@@ -14,7 +14,7 @@ float Vec3d::lenSq(){
 float Vec3d::len(){
     return sqrt(lenSq());
 }
-Vec3d Vec3d::normalize(){
+Vec3d Vec3d::normalized(){
     return this->operator*(1.0 / len());
 }
 Vec3d Vec3d::operator* (float lambda){
@@ -45,7 +45,7 @@ float Vec2d::lenSq(){
 float Vec2d::len(){
     return sqrt(lenSq());
 }
-Vec2d Vec2d::normalize(){
+Vec2d Vec2d::normalized(){
     return this->operator*(1.0f / len());
 }
 Vec2d Vec2d::operator* (float lambda){
