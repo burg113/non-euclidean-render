@@ -10,6 +10,8 @@
 struct ConfigParser {
     const char pathSeparator = '/';
     std::string meshPath;
+    std::string outPath;
+    std::string outFileName;
 
     void loadConfig(std::string tryFirst);
 

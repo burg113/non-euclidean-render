@@ -16,7 +16,6 @@ const std::regex OBJ_parser::triangleRegex(R"(f (\d*)/(\d*)/(\d*) (\d*)/(\d*)/(\
 
 
 void OBJ_parser::loadFromFile(string path) {
-    cout << "starting... " << endl;
     ifstream file (path);
     if (!file.is_open()) {
         throw runtime_error("error: could not open mesh at" + path);
@@ -37,5 +36,4 @@ void OBJ_parser::loadFromFile(string path) {
             textureCords.emplace_back(stod(matches.str(1)), stod(matches.str(2)));
         }
     }
-    cout << "finished" << endl;
 }

@@ -3,9 +3,25 @@
 //
 #include <iostream>
 #include "../lib/toml.hpp"
+
 using namespace std;
 
+// read string from given toml table
+string readString(toml::table &table, vector<string> path,string errorMsg = "", string stdReturn="") {
+    toml::node_view a = table[path[0]];
+    for (int i = 0; i < path.size() - 1; i++)
+        a = a[path[i + 1]];
+    auto s = a.value<string>();
+    if (!s.has_value()) {
+        if (errorMsg.size()>0)
+            cout << errorMsg << "\n";
+        return stdReturn;
+    }else
+        return s.value();
+}
+
 #include "ConfigParser.h"
+
 void ConfigParser::loadConfig(string tryFirst) {
     while (true) {
         string input = tryFirst;
@@ -14,7 +30,7 @@ void ConfigParser::loadConfig(string tryFirst) {
             tryFirst = "";
         } else {
             cout << "please input the path to the scene file: \n";
-            getline(cin,input);
+            getline(cin, input);
         }
 
         optional<toml::table> t = readToml(input);
@@ -22,13 +38,12 @@ void ConfigParser::loadConfig(string tryFirst) {
             continue;
         toml::table table = t.value();
 
-        // read in a valid toml
-        auto s = table["mesh"]["file"].value<string>();
-        if (!s.has_value()) {
-            cout << "error: missing mesh path\n";
-            continue;
-        }
-        meshPath = input.substr(0, input.find_last_of(pathSeparator) + 1) + s.value();
+        string basePath = input.substr(0, input.find_last_of(pathSeparator) + 1);
+
+        meshPath = basePath + readString(table,{"mesh","file"},"error: missing mesh path");
+        outPath = basePath + readString(table,{"output","path"});
+        outFileName = readString(table,{"output","filename"});
+
         break;
     }
 }
