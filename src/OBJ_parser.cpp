@@ -26,9 +26,9 @@ void OBJ_parser::loadFromFile(string path) {
     while (getline(file,line)) {
         smatch matches;
         if (std::regex_match(line, matches, triangleRegex)) { // triangle
-            triangle_vertices.emplace_back(stoi(matches.str(1)), stoi(matches.str(4)), stoi(matches.str(7)));
-            triangle_textureCords.emplace_back(stoi(matches.str(2)), stoi(matches.str(5)), stoi(matches.str(8)));
-            triangle_normals.emplace_back(stoi(matches.str(3)), stoi(matches.str(6)), stoi(matches.str(9)));
+            triangle_vertices.emplace_back(stoi(matches.str(1)) - 1, stoi(matches.str(4))- 1, stoi(matches.str(7))- 1);
+            triangle_textureCords.emplace_back(stoi(matches.str(2))- 1, stoi(matches.str(5))- 1, stoi(matches.str(8))- 1);
+            triangle_normals.emplace_back(stoi(matches.str(3))- 1, stoi(matches.str(6))- 1, stoi(matches.str(9))- 1);
         } else if (std::regex_match(line, matches, vertexRegex)) { // vertex
             vertices.emplace_back(stod(matches.str(1)), stod(matches.str(2)), stod(matches.str(3)));
         } else if (std::regex_match(line, matches, normalRegex)) { // normals
