@@ -29,7 +29,7 @@ int main(int argc, char **argv) {
 
     cout << objParser.triangle_vertices.size() << "\n";
     GeoGraph graph(objParser.vertices, objParser.triangle_vertices);
-    int w = 1000, h = 1000, comp = 3;
+    int w = 400, h = 400, comp = 3;
     vector<u8> data(w * h * comp);
     State state;
     state.tri = 0;
@@ -45,13 +45,13 @@ int main(int argc, char **argv) {
             state.dir = state.dir.normalized();
             State res = graph.traverse(state, dist);
             Vec3d normal3d = graph.triangles[res.tri].normal3d;
-//            triangleSet.insert(res.tri);
+            triangleSet.insert(res.tri);
                 data[3*(w * i + j)]     = u8(127 + 120 * normal3d.x);
                 data[3*(w * i + j) + 1] = u8(127 + 120 * normal3d.y);
                 data[3*(w * i + j) + 2] = u8(127 + 120 * normal3d.z);
         }
     }
-//    for(int i : triangleSet) cout << i << "\n";
+    for(int i : triangleSet) cout << i << "\n";
 
     stbi_write_png("rendered.png", w, h, comp, data.data(), 0);
     /*for (auto a : objParser.vertices) {

@@ -9,10 +9,13 @@ struct State{
 
 struct Triangle{
     Vec2d vert[3];
-    // (triangle_id, orientation)
+
     // index i means side from i to i+1
+    int nextTriangle[3];
     // add 3 if other direction (i+1 -> i)
-    pair<int, short> shared[3];
+    int nextSide[3];
+    Mat2d rotationMatrix[3];
+    Vec2d nextVert[3][2];
 
     Vec3d normal3d;
 

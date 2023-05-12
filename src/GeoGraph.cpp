@@ -52,13 +52,17 @@ GeoGraph::GeoGraph(vector<Vec3d> vertices, vector<tuple<int, int, int>> triangle
         auto p2 = make_pair(j, i);
         if(byEdge.count(p1)){
             auto [tri2, side2] = byEdge[p1];
-            triangles[tri].shared[side] = {tri2, side2};
-            triangles[tri2].shared[side2] = {tri, side};
+            triangles[tri].nextTriangle[side] = tri2;
+            triangles[tri].nextSide[side] = side2;
+            triangles[tri2].nextTriangle[side2] = tri;
+            triangles[tri2].nextSide[side2] = side;
         }
         else if(byEdge.count((p2))){
             auto [tri2, side2] = byEdge[p2];
-            triangles[tri].shared[side] = {tri2, side2+3};
-            triangles[tri2].shared[side2] = {tri, side+3};
+            triangles[tri].nextTriangle[side] = tri2;
+            triangles[tri].nextSide[side] = side2 + 3;
+            triangles[tri2].nextTriangle[side2] = tri;
+            triangles[tri2].nextSide[side2] = side + 3;
         }
         else{
             byEdge[p1] = {tri, side};
@@ -72,8 +76,6 @@ GeoGraph::GeoGraph(vector<Vec3d> vertices, vector<tuple<int, int, int>> triangle
         Vec3d a3 = vertices[ind0];
         Vec3d b3 = vertices[ind1];
         Vec3d c3 = vertices[ind2];
-//        cout << a3 << " " << b3 << " " << c3 << "\n";
-//        cout << "dists: " << (a3-b3).len() << " " << (b3-c3).len() << " " << (a3-c3).len() << "\n";
         Vec3d aToB = b3-a3;
         Vec3d aToC = c3-a3;
         Vec3d v = aToB.normalized();
@@ -83,14 +85,34 @@ GeoGraph::GeoGraph(vector<Vec3d> vertices, vector<tuple<int, int, int>> triangle
         triangles[i].vert[1] = {aToB.len(), 0};
         triangles[i].vert[2] = {v.dot(aToC), w.dot(aToC)};
         triangles[i].normal3d = normal;
-//        cout << a3.x << " " << a3.y << " " << a3.z << "\n";
-//        cout << b3.x << " " << b3.y << " " << b3.z << "\n";
-//        cout << c3.x << " " << c3.y << " " << c3.z << "\n";
-//        cout << aToB.len() << " " << aToC.len() << "\n";
         // corresponding edges
         processEdge(ind0, ind1, i, 0);
         processEdge(ind1, ind2, i, 1);
         processEdge(ind2, ind0, i, 2);
+    }
+
+    // precompute transition data
+    for(Triangle &triangle : triangles){
+        for(int side = 0; side < 3; side++){
+            Triangle nextTri = triangles[triangle.nextTriangle[side]];
+            int nextSide = triangle.nextSide[side];
+            bool negate = false;
+            if(nextSide >= 3){
+                nextSide -= 3;
+                negate = true;
+            }
+            Vec2d myA = triangle.vert[(side+1)%3], myB = triangle.vert[side];
+            Vec2d toA = nextTri.vert[(nextSide+1)%3], toB = nextTri.vert[nextSide];
+            if(negate) swap(toA, toB);
+            Vec2d my = (myA - myB).normalized();
+            Vec2d myPerp = my.perp();
+            Vec2d to = (toA - toB).normalized();
+            Mat2d mat = Mat2d{to, to.perp()} * Mat2d{{my.x, myPerp.x}, {my.y, myPerp.y}};
+
+            triangle.rotationMatrix[side] = mat;
+            triangle.nextVert[side][0] = toB;
+            triangle.nextVert[side][1] = toA;
+        }
     }
 }
 
@@ -106,26 +128,10 @@ State GeoGraph::traverse(State state, float dist){
     }
     dist -= untilHit;
     state.pos = state.pos + state.dir*untilHit;
-    state.tri = myTri.shared[side].first;
-    // adjust direction
-    Triangle nextTri = triangles[myTri.shared[side].first];
-    short nextSide = myTri.shared[side].second;
-    bool negate = false;
-    if(nextSide >= 3){
-        nextSide -= 3;
-        negate = true;
-    }
-    Vec2d myA = myTri.vert[(side+1)%3], myB = myTri.vert[side];
-    Vec2d toA = nextTri.vert[(nextSide+1)%3], toB = nextTri.vert[nextSide];
-    if(negate) swap(toA, toB);
-    Vec2d my = (myA - myB).normalized();
-    Vec2d myPerp = my.perp();
-    Vec2d to = (toA - toB).normalized();
-    Mat2d mat = Mat2d{to, to.perp()} * Mat2d{{my.x, myPerp.x}, {my.y, myPerp.y}};
-    Vec2d temp = mat * my;
-    state.dir = mat * state.dir;
-    // adjust position
-    state.pos = toB + to * (my.dot(state.pos - myB));
+    state.tri = myTri.nextTriangle[side];
+    state.dir = myTri.rotationMatrix[side] * state.dir;
+    float sidePosition = (myTri.vert[(side+1)%3] - myTri.vert[side]).normalized().dot(state.pos - myTri.vert[side]);
+    state.pos = myTri.nextVert[side][0] + (myTri.nextVert[side][1] - myTri.nextVert[side][0]).normalized() * sidePosition;
 
     return traverse(state, dist);
 }
