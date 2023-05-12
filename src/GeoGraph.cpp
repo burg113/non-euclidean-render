@@ -21,6 +21,10 @@ pair<float, short> Triangle::rayIntersect(Vec2d pos, Vec2d dir){
     return {minDist, side};
 }
 
+Vec2d Triangle::getMid() {
+    return ((vert[0] + vert[1]) * 0.5 + vert[2]) * 0.5;
+}
+
 
 GeoGraph::GeoGraph(vector<Vec3d> vertices, vector<tuple<int, int, int>> triangleVerts) {
     int n = (int)triangleVerts.size();

@@ -16,6 +16,8 @@ struct Triangle{
 
     // (distance, side)
     pair<float, short> rayIntersect(Vec2d pos, Vec2d dir);
+
+    Vec2d getMid();
 };
 
 struct GeoGraph{

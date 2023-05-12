@@ -2,7 +2,11 @@
 #include "lib/toml.hpp"
 #include "src/ConfigParser.h"
 #include "src/OBJ_parser.h"
+#include "src/GeoGraph.h"
+#include "lib/stb_image_write.h"
 #include <filesystem>
+
+typedef unsigned char u8;
 
 const char pathSeperator = '/';
 
@@ -22,6 +26,28 @@ int main(int argc, char **argv) {
     OBJ_parser objParser;
     objParser.loadFromFile(configParser.meshPath);
 
+    GeoGraph graph(objParser.vertices, objParser.triangle_vertices);
+    int w = 100, h = 100, comp = 3;
+    vector<u8> data(w * h * comp);
+    State state;
+    state.tri = 0;
+    state.pos = graph.triangles[0].getMid();
+    const float scale = 0.001;
+    for(int i = 0; i < h; i++){
+        for(int j = 0; j < w; j++){
+            state.dir.x = (j - w / 2.0f) * scale;
+            state.dir.y = (h / 2.0f - i) * scale;
+            float dist = state.dir.len();
+            state.dir = state.dir.normalize();
+            State res = graph.traverse(state, dist);
+            int t = res.tri;
+            data[3*(w * i + j)]   = (42 * t) % 255;
+            data[3*(w * i + j) + 1] = (13 * t + 1) % 255;
+            data[3*(w * i + j) + 2] = (143 * t + 42) % 255;
+        }
+    }
+
+    stbi_write_png("rendered.png", w, h, comp, data.data(), 0);
     /*for (auto a : objParser.vertices) {
         cout << get<0>(a) << " " << get<1>(a) << " " << get<2>(a) << "\n";
     }*/
