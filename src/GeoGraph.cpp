@@ -13,13 +13,17 @@ pair<float, short> Triangle::rayIntersect(Vec2d pos, Vec2d dir){
     float minDist = 1e8;
     for(int i = 0; i < 3; i++){
         float dist = lineIntersect(pos, dir, vert[i], vert[(i+1)%3]-vert[i]).first;
-        if(dist > eps && dist < minDist){
+        Vec2d normal = (vert[i]-vert[(i+1)%3]).perp().normalized();
+        if(normal.dot(dir) > 0 && dist < minDist){
+            if(dist < 0){
+                throw invalid_argument("Ray-cast started outside of triangle?");
+            }
             minDist = dist;
             side = i;
         }
     }
     if(side == -1){
-        throw 42;
+        throw invalid_argument("Ray-cast started outside of triangle?");
     }
     return {minDist, side};
 }
@@ -68,10 +72,10 @@ GeoGraph::GeoGraph(vector<Vec3d> vertices, vector<tuple<int, int, int>> triangle
         triangles[i].vert[1] = {aToB.len(), 0};
         triangles[i].vert[2] = {v.dot(aToC), w.dot(aToC)};
 
-        cout << a3.x << " " << a3.y << " " << a3.z << "\n";
-        cout << b3.x << " " << b3.y << " " << b3.z << "\n";
-        cout << c3.x << " " << c3.y << " " << c3.z << "\n";
-        cout << aToB.len() << " " << aToC.len() << "\n";
+//        cout << a3.x << " " << a3.y << " " << a3.z << "\n";
+//        cout << b3.x << " " << b3.y << " " << b3.z << "\n";
+//        cout << c3.x << " " << c3.y << " " << c3.z << "\n";
+//        cout << aToB.len() << " " << aToC.len() << "\n";
         // corresponding edges
         processEdge(ind0, ind1, i, 0);
         processEdge(ind1, ind2, i, 1);
