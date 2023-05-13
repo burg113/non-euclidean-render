@@ -1,8 +1,13 @@
 # this is an example scene file
 [mesh]
 # file = "../models/cube.obj"
-file = "../models/sphere_ico_64.obj" # relative to this file
+file = "../models/donut_128.obj" # relative to this file
+
+[render]
+width = 1920
+height = 1080
+scale = 500
 
 [output]
-path = "../../results/" # relative to this file
-filename = "render.png"
+path = "../../test/out/" # relative to this file
+filename = "render"

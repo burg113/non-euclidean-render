@@ -16,6 +16,7 @@ using namespace std;
 
 
 int main(int argc, char **argv) {
+
     string fileDir;
     if (argc > 1)
         fileDir = argv[1];
@@ -29,19 +30,23 @@ int main(int argc, char **argv) {
     cout << "finished " << endl;
 
 
-    cout << "object has : " << objParser.triangle_vertices.size() << " triangles\n";
+    cout << "resolution      : " << configParser.width << " x " << configParser.height << "\n";
+    cout << "mesh            : " << configParser.meshPath << "\n";
+    cout << "triangle count  : " << objParser.triangle_vertices.size() << "\n";
+    cout << "vertex count    : " << objParser.vertices.size() << "\n";
+    cout << "scale           : " << configParser.scale << "\n";
     GeoGraph graph(objParser.vertices, objParser.triangle_vertices);
-    int w = 1920, h = 1080, comp = 3;
-    vector<u8> data(w * h * comp);
+    int w = configParser.width, h = configParser.height, comp = 3;
+    vector<u8> data(configParser.width * configParser.height * comp);
     State state;
     state.tri = 0;
     state.pos = graph.triangles[state.tri].getMid();
 
-    cout << "starting render: ";
+    cout << "rendering       : ";
     auto t1 = chrono::high_resolution_clock::now();
     int count = 0;
 //    cout << graph.triangles[state.tri] << "\n";
-    const float scale = 200;
+    const double scale = configParser.scale;
     set<int> triangleSet;
     for (int i = 0; i < h; i++) {
         while (count * h < (100 * i)) {
@@ -52,8 +57,8 @@ int main(int argc, char **argv) {
                 cout << ".";
         }
         for (int j = 0; j < w; j++) {
-            state.dir.x = (j - w / 2.0f) / scale / w * 100; // *0.005f
-            state.dir.y = (h / 2.0f - i) / scale / w * 100;
+            state.dir.x = (j - w / 2.0) / scale / w * 100; // *0.005f
+            state.dir.y = (h / 2.0 - i) / scale / w * 100;
             float dist = state.dir.len();
             state.dir = state.dir.normalized();
             State res = graph.traverse(state, dist);
@@ -64,12 +69,34 @@ int main(int argc, char **argv) {
             data[3 * (w * i + j) + 2] = u8(127 + 120 * normal3d.z);
         }
     }
+    cout << endl;
     auto t2 = chrono::high_resolution_clock::now();
-    cout << "\n" << "finished in " << chrono::duration_cast<chrono::milliseconds>(t2 - t1).count() <<"ms\n";
-//    for(int i : triangleSet) cout << i << "\n";
+    long long renderTime = chrono::duration_cast<chrono::milliseconds>(t2 - t1).count();
+    cout << "time taken      : " << renderTime << "ms (" << renderTime / 1000 << "." << renderTime % 1000 << "s)\n";
 
-    cout << "\n" << "writing to file: " << configParser.outPath + configParser.outFileName << endl;
-    stbi_write_png((configParser.outPath + configParser.outFileName).c_str(), w, h, comp, data.data(), 0);
+    // writing image file
+    auto b = chrono::high_resolution_clock::now().time_since_epoch();
+    int startInd = configParser.meshPath.find_last_of(configParser.pathSeparator) + 1;
+    string dir = configParser.outPath +
+                 configParser.meshPath.substr(startInd, configParser.meshPath.find_last_of(".") - startInd)
+                 + "/" + to_string((int)scale) + "/" + to_string(b.count() / 100000000);
+    filesystem::create_directories(dir);
+    string outFilePath = dir + "/" + configParser.outFileName;
+    cout << "\n" << "writing to file: " << outFilePath << endl;
+    stbi_write_png((outFilePath + ".png").c_str(), w, h, comp, data.data(), 0);
+
+    // writing log file
+    ofstream myfile;
+    myfile.open(outFilePath + ".log");
+    auto a = chrono::system_clock::to_time_t(chrono::high_resolution_clock::now());
+    myfile << "This is a log from " << ctime(&a);
+    myfile << "resolution      : " << w << " x " << h << "\n\n";
+    myfile << "mesh            : " << configParser.meshPath << "\n";
+    myfile << "triangle count  : " << objParser.triangle_vertices.size() << "\n";
+    myfile << "vertex count    : " << objParser.vertices.size() << "\n\n";
+    myfile << "scale           : " << scale << "\n\n";
+    myfile << "time taken      : " << renderTime << "ms (" << renderTime / 1000 << "." << renderTime % 1000 << "s)\n";
+    myfile.close();
 
     cout << "\n" << "done!";
     return 0;

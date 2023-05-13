@@ -5,13 +5,13 @@
 #include "../lib/toml.hpp"
 
 using namespace std;
-
+template <typename T>
 // read string from given toml table
-string readString(toml::table &table, vector<string> path,string errorMsg = "", string stdReturn="") {
+T readFromTable(toml::table &table, vector<string> path, T stdReturn, string errorMsg = "") {
     toml::node_view a = table[path[0]];
     for (int i = 0; i < path.size() - 1; i++)
         a = a[path[i + 1]];
-    auto s = a.value<string>();
+    auto s = a.value<T>();
     if (!s.has_value()) {
         if (errorMsg.size()>0)
             cout << errorMsg << "\n";
@@ -19,6 +19,7 @@ string readString(toml::table &table, vector<string> path,string errorMsg = "", 
     }else
         return s.value();
 }
+
 
 #include "ConfigParser.h"
 
@@ -40,9 +41,12 @@ void ConfigParser::loadConfig(string tryFirst) {
 
         string basePath = input.substr(0, input.find_last_of(pathSeparator) + 1);
 
-        meshPath = basePath + readString(table,{"mesh","file"},"error: missing mesh path");
-        outPath = basePath + readString(table,{"output","path"});
-        outFileName = readString(table,{"output","filename"});
+        meshPath = basePath + readFromTable(table, {"mesh", "file"}, "","error: missing mesh path");
+        outPath = basePath + readFromTable(table, {"output", "path"},"");
+        outFileName = readFromTable(table, {"output", "filename"},"");
+        scale = readFromTable(table, {"render", "scale"},1.0);
+        width = readFromTable(table, {"render", "width"},100);
+        height = readFromTable(table, {"render", "height"},100);
 
         break;
     }

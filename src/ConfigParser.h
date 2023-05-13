@@ -12,6 +12,9 @@ struct ConfigParser {
     std::string meshPath;
     std::string outPath;
     std::string outFileName;
+    int width;
+    int height;
+    double scale;
 
     void loadConfig(std::string tryFirst);
 
