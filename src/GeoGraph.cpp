@@ -116,15 +116,15 @@ GeoGraph::GeoGraph(vector<Vec3d> vertices, vector<tuple<int, int, int>> triangle
     }
 }
 
-State GeoGraph::traverse(State state, float dist){
+pair<State, float> GeoGraph::traverse(State state, float dist){
     if (dist == 0)
-        return state;
+        return {state, 0};
 
     Triangle myTri = triangles[state.tri];
     auto [untilHit, side] = myTri.rayIntersect(state.pos, state.dir);
     if(dist < untilHit){
         state.pos = state.pos + state.dir * dist;
-        return state;
+        return {state, untilHit-dist};
     }
     dist -= untilHit;
     state.pos = state.pos + state.dir*untilHit;

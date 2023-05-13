@@ -153,15 +153,22 @@ void Renderer::render(State startState, double scale, const vector<LoggingTarget
 
     vector<u8> data(w * h * 3);
     int count = 0;
-
     auto renderPart = [&](vector<pair<Vec2d,vector<pair<float, int>>>> &vec, Vec2d offset) {
         count = 0;
         for (auto &borderPixel: vec) {
             State state = startState;
             state.dir = borderPixel.first;
             float lastDist = 0;
+            float nextHit = -1;
             for (auto [dist, index]: borderPixel.second) {
-                state = graph.traverse(state, (dist - lastDist)/scale / w * 100);
+                float rayDist = (dist - lastDist)/scale / w * 100;
+                if(rayDist < nextHit){
+                    nextHit -= rayDist;
+                    state.pos = state.pos + state.dir * rayDist;
+                }
+                else{
+                    tie(state, nextHit) = graph.traverse(state, rayDist);
+                }
                 Vec3d normal3d = graph.triangles[state.tri].normal3d;
                 data[3 * index] = u8(127 + 120 * normal3d.x);
                 data[3 * index + 1] = u8(127 + 120 * normal3d.y);

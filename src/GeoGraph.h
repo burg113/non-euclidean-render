@@ -31,6 +31,6 @@ struct GeoGraph{
     vector<Triangle> triangles;
 
     GeoGraph(vector<Vec3d> vertices, vector<tuple<int, int, int>> triangleVerts);
-    State traverse(State state, float dist);
+    pair<State, float> traverse(State state, float dist);
 };
 
