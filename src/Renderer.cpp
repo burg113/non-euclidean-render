@@ -60,11 +60,15 @@ Renderer::Renderer(int w, int h, GeoGraph graph, RenderingTarget &target) : w(w)
 
     for (int i = 0; i < w; i++) {
         top[i].first = Vec2d((i+0.5) - w/2.0,-h/2.0).normalized();
+        top[i].second.reserve(h/4*3);
         bottom[i].first = Vec2d( w/2.0 - (i+0.5),h/2.0).normalized();
+        bottom[i].second.reserve(h/4*3);
     }
     for (int i = 0; i < h-2; i++) {
         right[i].first = Vec2d( w/2.0,(h-1)/2.0 - (i+0.5)).normalized();
+        bottom[i].second.reserve(w/4*3);
         left[i].first = Vec2d(-w/2.0, (i+0.5)-(h-1)/2.0).normalized();
+        bottom[i].second.reserve(w/4*3);
     }
 
     // assuming w, h even
@@ -103,8 +107,12 @@ Renderer::Renderer(int w, int h, GeoGraph graph, RenderingTarget &target) : w(w)
     }
 
     auto sortSubVector = [](auto &vec) {
-        for (auto &a: vec)
+        int m = 0;
+        for (auto &a: vec) {
             std::sort(a.second.begin(), a.second.end());
+            m = max(m,(int)a.second.size());
+        }
+        cout << "MAX:" << m ;
     };
     sortSubVector(top);
     sortSubVector(bottom);
@@ -153,15 +161,17 @@ void Renderer::render(State startState, double scale, const vector<LoggingTarget
 
     vector<u8> data(w * h * 3);
     int count = 0;
-    auto renderPart = [&](vector<pair<Vec2d,vector<pair<float, int>>>> &vec, Vec2d offset) {
+    auto renderPart = [&](vector<pair<Vec2d,vector<pair<float, int>>>> &vec) {
         count = 0;
         for (auto &borderPixel: vec) {
             State state = startState;
             state.dir = borderPixel.first;
             float lastDist = 0;
             float nextHit = -1;
-            for (auto [dist, index]: borderPixel.second) {
-                float rayDist = (dist - lastDist)/scale / w * 100;
+
+            double trueScaleInverse = 100/(scale * w);
+            for (auto &[dist, index]: borderPixel.second) {
+                float rayDist = (dist - lastDist)* trueScaleInverse;
                 if(rayDist < nextHit){
                     nextHit -= rayDist;
                     state.pos += state.dir * rayDist;
@@ -169,19 +179,19 @@ void Renderer::render(State startState, double scale, const vector<LoggingTarget
                 else{
                     tie(state, nextHit) = graph.traverse(state, rayDist);
                 }
-                Vec3d normal3d = graph.triangles[state.tri].normal3d;
-                data[3 * index] = u8(127 + 120 * normal3d.x);
-                data[3 * index + 1] = u8(127 + 120 * normal3d.y);
-                data[3 * index + 2] = u8(127 + 120 * normal3d.z);
+                data[3 * index] = u8(127 + 120 * graph.triangles[state.tri].normal3d.x);
+                data[3 * index + 1] = u8(127 + 120 * graph.triangles[state.tri].normal3d.y);
+                data[3 * index + 2] = u8(127 + 120 * graph.triangles[state.tri].normal3d.z);
                 lastDist = dist;
             }
             count++;
         }
     };
-    renderPart(top, Vec2d(0, 1));
-    renderPart(bottom, 1);
-    renderPart(right, 2);
-    renderPart(left, 3);
+
+    renderPart(top);
+    renderPart(bottom);
+    renderPart(right);
+    renderPart(left);
 
     log("\n");
 
