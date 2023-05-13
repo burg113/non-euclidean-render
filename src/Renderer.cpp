@@ -18,6 +18,7 @@ void FileOut::writeOut(std::string &str) {
     file << str;
     file.close();
 }
+
 void FileOut::writeOutNewLine(std::string &str) {
     filesystem::create_directories(path);
     ofstream file;
@@ -25,6 +26,7 @@ void FileOut::writeOutNewLine(std::string &str) {
     file << str << "\n";
     file.close();
 }
+
 void FileOut::writeOut(vector<std::string> &data) {
     filesystem::create_directories(path);
     ofstream file;
@@ -49,8 +51,69 @@ void ConsoleOut::writeOutNewLine(std::string &str) {
     cout << str << "\n";
 }
 
+Renderer::Renderer(int w, int h, GeoGraph graph, RenderingTarget &target) : w(w), h(h), graph(std::move(graph)),
+                                                                            renderingTarget(target) {
+    top = vector<pair<Vec2d, vector<pair<float, int>>>>(w);
+    bottom = vector<pair<Vec2d, vector<pair<float, int>>>>(w);
+    left = vector<pair<Vec2d, vector<pair<float, int>>>>(h - 2);
+    right = vector<pair<Vec2d, vector<pair<float, int>>>>(h - 2);
 
-void Renderer::debugRender(State start, double scale, const vector<LoggingTarget *> &loggingTargets, map<string, string> info) {
+    for (int i = 0; i < w; i++) {
+        top[i].first = Vec2d((i+0.5) - w/2.0,-h/2.0).normalized();
+        bottom[i].first = Vec2d( w/2.0 - (i+0.5),h/2.0).normalized();
+    }
+    for (int i = 0; i < h-2; i++) {
+        right[i].first = Vec2d( w/2.0,(h-1)/2.0 - (i+0.5)).normalized();
+        left[i].first = Vec2d(-w/2.0, (i+0.5)-(h-1)/2.0).normalized();
+    }
+
+    // assuming w, h even
+    for (int y = -h / 2; y < (h + 1) / 2; y++) {
+        for (int x = -w / 2; x < (w + 1) / 2; x++) {
+            int ix = x + w / 2;
+            int iy = y + h / 2;
+
+            // lower triangle:(y+0.5)/(abs(x+0.5)) > h / w
+            if ((y + 0.5) * w >= h * abs(x + 0.5)) {
+                // x * h/y = i
+                top[clamp(w / 2 + (x * h + h / 2) / (y * 2 + 1), 0, w - 1)].second.emplace_back(
+                        Vec2d(x + 0.5, y + 0.5).len(), iy * w + ix);
+            }
+                // upper triangle (y+0.5)/abs(x+0.5) < - h / w
+            else if ((y + 0.5) * w <= -h * abs(x + 0.5)) {
+                bottom[clamp(w / 2 + (x * h + h / 2) / (y * 2 + 1), 0, w - 1)].second.emplace_back(
+                        Vec2d(x + 0.5, y + 0.5).len(), iy * w + ix);
+            }
+                // right triangle (x+0.5)/(abs(y+0.5)) > w/h
+            else if ((x + 0.5) * h >= w * abs(y + 0.5)) {
+                // y * w /x
+
+                right[clamp(h / 2 + (y * w + w / 2) / (x * 2 + 1), 0, h - 3)].second.emplace_back(
+                        Vec2d(x + 0.5, y + 0.5).len(),
+                        iy * w + ix);
+            }
+                // left triangle (x+0.5)/(abs(y+0.5)) < -w/h
+            else {
+                left[clamp(h / 2 + (y * w + w / 2) / (x * 2 + 1), 0, h - 3)].second.emplace_back(
+                        Vec2d(x + 0.5, y + 0.5).len(),
+                        iy * w + ix);
+            }
+        }
+
+    }
+
+    auto sortSubVector = [](auto &vec) {
+        for (auto &a: vec)
+            std::sort(a.second.begin(), a.second.end());
+    };
+    sortSubVector(top);
+    sortSubVector(bottom);
+    sortSubVector(right);
+    sortSubVector(left);
+}
+
+void Renderer::renderDebug(State start, double scale, const vector<LoggingTarget *> &loggingTargets,
+                           map<string, string> info) {
     vector<string> debugInfo;
     auto currentTime = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
 
@@ -67,7 +130,7 @@ void Renderer::debugRender(State start, double scale, const vector<LoggingTarget
     log("vertices (mesh)   : " + info["vertices"]);
     log("triangles (graph) : " + to_string(graph.triangles.size()));
     log("");
-    log("scale             : " + to_string(int(scale))+"." + to_string(int(scale*10)%10));
+    log("scale             : " + to_string(int(scale)) + "." + to_string(int(scale * 10) % 10));
     for (const string &str: debugInfo)
         cout << str << endl;
 
@@ -79,40 +142,40 @@ void Renderer::debugRender(State start, double scale, const vector<LoggingTarget
     long long renderTimeMs = chrono::duration_cast<chrono::milliseconds>(t2 - t1).count();
 
     log("rendering took    : " + to_string(renderTimeMs) + "ms");
-    log("pixel per second  : " + to_string(w * h* 1000 / renderTimeMs ));
+    log("pixel per second  : " + to_string((long long)w * h * 1000 / renderTimeMs));
 }
 
-void Renderer::render(State start, double scale, const vector<LoggingTarget *> &loggingTargets) {
+void Renderer::render(State startState, double scale, const vector<LoggingTarget *> &loggingTargets) {
     auto log = [&](string str) {
         for (LoggingTarget *target: loggingTargets)
             (*target).writeOut(str);
     };
-    State state = start;
+
     vector<u8> data(w * h * 3);
     int count = 0;
-    for (int i = 0; i < h; i++) {
-        while (count * h < (100 * i)) {
+
+    auto renderPart = [&](vector<pair<Vec2d,vector<pair<float, int>>>> &vec, Vec2d offset) {
+        count = 0;
+        for (auto &borderPixel: vec) {
+            State state = startState;
+            state.dir = borderPixel.first;
+            float lastDist = 0;
+            for (auto [dist, index]: borderPixel.second) {
+                state = graph.traverse(state, (dist - lastDist)/scale / w * 100);
+                Vec3d normal3d = graph.triangles[state.tri].normal3d;
+                data[3 * index] = u8(127 + 120 * normal3d.x);
+                data[3 * index + 1] = u8(127 + 120 * normal3d.y);
+                data[3 * index + 2] = u8(127 + 120 * normal3d.z);
+                lastDist = dist;
+            }
             count++;
-            if (count % 10 == 0)
-                log("#");
-            else
-                log(".");
         }
+    };
+    renderPart(top, Vec2d(0, 1));
+    renderPart(bottom, 1);
+    renderPart(right, 2);
+    renderPart(left, 3);
 
-        for (int j = 0; j < w; j++) {
-            state.dir.x = (j - w / 2.0) / scale / w * 100; // *0.005f
-            state.dir.y = (h / 2.0 - i) / scale / w * 100;
-            float dist = state.dir.len();
-            state.dir = state.dir.normalized();
-
-            State res = graph.traverse(state, dist);
-
-            Vec3d normal3d = graph.triangles[res.tri].normal3d;
-            data[3 * (w * i + j)] = u8(127 + 120 * normal3d.x);
-            data[3 * (w * i + j) + 1] = u8(127 + 120 * normal3d.y);
-            data[3 * (w * i + j) + 2] = u8(127 + 120 * normal3d.z);
-        }
-    }
     log("\n");
 
     renderingTarget.writeOut({w, h}, data);

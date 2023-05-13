@@ -52,11 +52,14 @@ struct Renderer {
     int w, h;
     GeoGraph graph;
     RenderingTarget &renderingTarget;
+    vector<pair<Vec2d,vector<pair<float, int>>>> top;
+    vector<pair<Vec2d,vector<pair<float, int>>>> bottom;
+    vector<pair<Vec2d,vector<pair<float, int>>>> left;
+    vector<pair<Vec2d,vector<pair<float, int>>>> right;
 
+    Renderer(int w, int h, GeoGraph graph, RenderingTarget &target);
 
-    Renderer(int w, int h, GeoGraph graph, RenderingTarget &target) : w(w), h(h), graph(std::move(graph)), renderingTarget(target) {}
+    void renderDebug(State start, double scale, const vector<LoggingTarget*> &loggingTargets, map<string,string> info);
 
-    void debugRender(State start, double scale, const vector<LoggingTarget*> &loggingTargets, map<string,string> info);
-
-    void render(State start, double scale,const vector<LoggingTarget *> &loggingTargets = {});
+    void render(State startState, double scale, const vector<LoggingTarget *> &loggingTargets = {});
 };

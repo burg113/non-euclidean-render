@@ -58,7 +58,7 @@ int main(int argc, char **argv) {
     loggingTargets.push_back(&logFile);
     loggingTargets.push_back(&consoleOut);
 
-    renderer.debugRender(state, configParser.scale, loggingTargets, debugInfo);
+    renderer.renderDebug(state, configParser.scale, loggingTargets, debugInfo);
     //renderer.render(state,configParser.scale);
 
     cout << "\n" << "done!";
