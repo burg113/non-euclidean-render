@@ -4,16 +4,18 @@
 #include "src/OBJ_parser.h"
 #include "src/GeoGraph.h"
 #include "lib/stb_image_write.h"
-#include <filesystem>
-#include <set>
-#include <chrono>
+#include "src/Renderer.h"
 
 typedef unsigned char u8;
 
-const char pathSeperator = '/';
+const char pathSeparator = '/';
 
 using namespace std;
 
+string getFileName(string path) {
+    int start = path.find_last_of(pathSeparator) + 1;
+    return path.substr(start, path.find_last_of('.') -start);
+}
 
 int main(int argc, char **argv) {
 
@@ -29,74 +31,35 @@ int main(int argc, char **argv) {
     objParser.loadFromFile(configParser.meshPath);
     cout << "finished " << endl;
 
-
-    cout << "resolution      : " << configParser.width << " x " << configParser.height << "\n";
-    cout << "mesh            : " << configParser.meshPath << "\n";
-    cout << "triangle count  : " << objParser.triangle_vertices.size() << "\n";
-    cout << "vertex count    : " << objParser.vertices.size() << "\n";
-    cout << "scale           : " << configParser.scale << "\n";
     GeoGraph graph(objParser.vertices, objParser.triangle_vertices);
-    int width = configParser.width, height = configParser.height, comp = 3;
-    vector<u8> data(configParser.width * configParser.height * comp);
+
+
+    auto time = chrono::high_resolution_clock::now().time_since_epoch();
+    string outPath = configParser.outPath + getFileName(configParser.meshPath) + "/";
+    outPath+= to_string((int)configParser.scale) + "/";
+    outPath+= to_string(time.count() / 100000000) + "/";
+
+    FileOut renderingTarget(outPath, configParser.outFileName + ".png");
+    Renderer renderer(configParser.width, configParser.height, graph, renderingTarget);
+
     State state;
     state.tri = 0;
     state.pos = graph.triangles[state.tri].getMid();
 
-    cout << "rendering       : ";
-    auto t1 = chrono::high_resolution_clock::now();
-    int count = 0;
-//    cout << graph.triangles[state.tri] << "\n";
-    const double scale = configParser.scale;
-    set<int> triangleSet;
-    for (int i = 0; i < height; i++) {
-        while (count * height < (100 * i)) {
-            count++;
-            if (count % 10 == 0)
-                cout << "#";
-            else
-                cout << ".";
-        }
-        for (int j = 0; j < width; j++) {
-            state.dir.x = (j - width / 2.0) / scale / width * 100; // *0.005f
-            state.dir.y = (height / 2.0 - i) / scale / width * 100;
-            float dist = state.dir.len();
-            state.dir = state.dir.normalized();
-            State res = graph.traverse(state, dist);
-            Vec3d normal3d = graph.triangles[res.tri].normal3d;
-//            triangleSet.insert(res.tri);
-            data[3 * (width * i + j)] = u8(127 + 120 * normal3d.x);
-            data[3 * (width * i + j) + 1] = u8(127 + 120 * normal3d.y);
-            data[3 * (width * i + j) + 2] = u8(127 + 120 * normal3d.z);
-        }
-    }
-    cout << endl;
-    auto t2 = chrono::high_resolution_clock::now();
-    long long renderTime = chrono::duration_cast<chrono::milliseconds>(t2 - t1).count();
-    cout << "time taken      : " << renderTime << "ms (" << renderTime / 1000 << "." << renderTime % 1000 << "s)\n";
+    map<string, string> debugInfo;
 
-    // writing image file
-    auto b = chrono::high_resolution_clock::now().time_since_epoch();
-    int startInd = configParser.meshPath.find_last_of(configParser.pathSeparator) + 1;
-    string dir = configParser.outPath +
-                 configParser.meshPath.substr(startInd, configParser.meshPath.find_last_of(".") - startInd)
-                 + "/" + to_string((int)scale) + "/" + to_string(b.count() / 100000000);
-    filesystem::create_directories(dir);
-    string outFilePath = dir + "/" + configParser.outFileName;
-    cout << "\n" << "writing to file: " << outFilePath << endl;
-    stbi_write_png((outFilePath + ".png").c_str(), width, height, comp, data.data(), 0);
+    debugInfo["mesh"] = getFileName(configParser.meshPath);
+    debugInfo["triangles"] = to_string(objParser.triangle_vertices.size());
+    debugInfo["vertices"] = to_string(objParser.vertices.size());
 
-    // writing log file
-    ofstream myfile;
-    myfile.open(outFilePath + ".log");
-    auto a = chrono::system_clock::to_time_t(chrono::high_resolution_clock::now());
-    myfile << "This is a log from " << ctime(&a);
-    myfile << "resolution      : " << width << " x " << height << "\n\n";
-    myfile << "mesh            : " << configParser.meshPath << "\n";
-    myfile << "triangle count  : " << objParser.triangle_vertices.size() << "\n";
-    myfile << "vertex count    : " << objParser.vertices.size() << "\n\n";
-    myfile << "scale           : " << scale << "\n\n";
-    myfile << "time taken      : " << renderTime << "ms (" << renderTime / 1000 << "." << renderTime % 1000 << "s)\n";
-    myfile.close();
+    FileOut logFile(outPath, configParser.outFileName + ".log");
+    ConsoleOut consoleOut = ConsoleOut();
+    vector<LoggingTarget *> loggingTargets = vector<LoggingTarget *>();
+    loggingTargets.push_back(&logFile);
+    loggingTargets.push_back(&consoleOut);
+
+    renderer.debugRender(state, configParser.scale, loggingTargets, debugInfo);
+    //renderer.render(state,configParser.scale);
 
     cout << "\n" << "done!";
     return 0;

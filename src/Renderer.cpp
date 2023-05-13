@@ -14,15 +14,15 @@ void FileOut::writeOut(pair<int, int> resolution, vector<u8> &data) {
 void FileOut::writeOut(std::string &str) {
     filesystem::create_directories(path);
     ofstream file;
-    file.open(path + name);
-    file << str << "\n";
+    file.open(path + name, ios_base::app);
+    file << str;
     file.close();
 }
 void FileOut::writeOutNewLine(std::string &str) {
     filesystem::create_directories(path);
     ofstream file;
-    file.open(path + name);
-    file << str;
+    file.open(path + name, ios_base::app);
+    file << str << "\n";
     file.close();
 }
 void FileOut::writeOut(vector<std::string> &data) {
@@ -50,7 +50,7 @@ void ConsoleOut::writeOutNewLine(std::string &str) {
 }
 
 
-void Renderer::debugRender(State start, int scale, const vector<LoggingTarget *> &loggingTargets, map<string, string> info) {
+void Renderer::debugRender(State start, double scale, const vector<LoggingTarget *> &loggingTargets, map<string, string> info) {
     vector<string> debugInfo;
     auto currentTime = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
 
@@ -60,7 +60,6 @@ void Renderer::debugRender(State start, int scale, const vector<LoggingTarget *>
     };
 
     log("This is a log from " + string(ctime(&currentTime)));
-    log("");
     log("resolution        : " + to_string(w) + " x " + to_string(h));
     log("");
     log("mesh              : " + info["mesh"]);
@@ -68,7 +67,7 @@ void Renderer::debugRender(State start, int scale, const vector<LoggingTarget *>
     log("vertices (mesh)   : " + info["vertices"]);
     log("triangles (graph) : " + to_string(graph.triangles.size()));
     log("");
-    log("scale             : " + to_string(scale));
+    log("scale             : " + to_string(int(scale))+"." + to_string(int(scale*10)%10));
     for (const string &str: debugInfo)
         cout << str << endl;
 
@@ -80,10 +79,10 @@ void Renderer::debugRender(State start, int scale, const vector<LoggingTarget *>
     long long renderTimeMs = chrono::duration_cast<chrono::milliseconds>(t2 - t1).count();
 
     log("rendering took    : " + to_string(renderTimeMs) + "ms");
-    log("pixel per second  : " + to_string((float) w * h / renderTimeMs * 1000));
+    log("pixel per second  : " + to_string(w * h* 1000 / renderTimeMs ));
 }
 
-void Renderer::render(State start, int scale, const vector<LoggingTarget *> &loggingTargets) {
+void Renderer::render(State start, double scale, const vector<LoggingTarget *> &loggingTargets) {
     auto log = [&](string str) {
         for (LoggingTarget *target: loggingTargets)
             (*target).writeOut(str);

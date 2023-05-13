@@ -28,10 +28,10 @@ struct FileOut : RenderingTarget, LoggingTarget {
     string path;
     string name;
 
-    FileOut(const string &path, const string &name) : path(path), name(name) {
+    FileOut(const string path, const string name) : path(path), name(name) {
         filesystem::create_directories(path);
         ofstream file;
-        file.open(path + name + ".log");
+        file.open(path + name);
         file.close();
     }
 
@@ -56,7 +56,7 @@ struct Renderer {
 
     Renderer(int w, int h, GeoGraph graph, RenderingTarget &target) : w(w), h(h), graph(std::move(graph)), renderingTarget(target) {}
 
-    void debugRender(State start, int scale, const vector<LoggingTarget*>& loggingTargets, map<string,string> info);
+    void debugRender(State start, double scale, const vector<LoggingTarget*> &loggingTargets, map<string,string> info);
 
-    void render(State start, int scale,const vector<LoggingTarget *> &loggingTargets = {});
+    void render(State start, double scale,const vector<LoggingTarget *> &loggingTargets = {});
 };
