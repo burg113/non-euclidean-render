@@ -164,7 +164,7 @@ void Renderer::render(State startState, double scale, const vector<LoggingTarget
                 float rayDist = (dist - lastDist)/scale / w * 100;
                 if(rayDist < nextHit){
                     nextHit -= rayDist;
-                    state.pos = state.pos + state.dir * rayDist;
+                    state.pos += state.dir * rayDist;
                 }
                 else{
                     tie(state, nextHit) = graph.traverse(state, rayDist);

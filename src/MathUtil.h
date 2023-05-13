@@ -36,6 +36,7 @@ struct Vec2d{
     Vec2d normalized();
     Vec2d operator* (float lambda);
     Vec2d operator+ (Vec2d other);
+    Vec2d operator+=(Vec2d other);
     Vec2d operator- (Vec2d other);
 };
 

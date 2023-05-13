@@ -123,7 +123,7 @@ pair<State, float> GeoGraph::traverse(State state, float dist){
     Triangle myTri = triangles[state.tri];
     auto [untilHit, side] = myTri.rayIntersect(state.pos, state.dir);
     if(dist < untilHit){
-        state.pos = state.pos + state.dir * dist;
+        state.pos += state.dir * dist;
         return {state, untilHit-dist};
     }
     dist -= untilHit;

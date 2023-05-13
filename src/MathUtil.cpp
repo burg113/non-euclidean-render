@@ -58,6 +58,12 @@ Vec2d Vec2d::operator- (Vec2d other){
     return {x-other.x, y-other.y};
 }
 
+Vec2d Vec2d::operator+=(Vec2d other) {
+    x += other.x;
+    y += other.y;
+    return *this;
+}
+
 ostream& operator<<(ostream &stream, Vec3d v){
     return stream << "(" << v.x << ", " << v.y << ", " << v.z << ")";
 }
