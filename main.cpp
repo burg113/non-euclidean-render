@@ -36,7 +36,7 @@ int main(int argc, char **argv) {
     cout << "vertex count    : " << objParser.vertices.size() << "\n";
     cout << "scale           : " << configParser.scale << "\n";
     GeoGraph graph(objParser.vertices, objParser.triangle_vertices);
-    int w = configParser.width, h = configParser.height, comp = 3;
+    int width = configParser.width, height = configParser.height, comp = 3;
     vector<u8> data(configParser.width * configParser.height * comp);
     State state;
     state.tri = 0;
@@ -48,25 +48,25 @@ int main(int argc, char **argv) {
 //    cout << graph.triangles[state.tri] << "\n";
     const double scale = configParser.scale;
     set<int> triangleSet;
-    for (int i = 0; i < h; i++) {
-        while (count * h < (100 * i)) {
+    for (int i = 0; i < height; i++) {
+        while (count * height < (100 * i)) {
             count++;
             if (count % 10 == 0)
                 cout << "#";
             else
                 cout << ".";
         }
-        for (int j = 0; j < w; j++) {
-            state.dir.x = (j - w / 2.0) / scale / w * 100; // *0.005f
-            state.dir.y = (h / 2.0 - i) / scale / w * 100;
+        for (int j = 0; j < width; j++) {
+            state.dir.x = (j - width / 2.0) / scale / width * 100; // *0.005f
+            state.dir.y = (height / 2.0 - i) / scale / width * 100;
             float dist = state.dir.len();
             state.dir = state.dir.normalized();
             State res = graph.traverse(state, dist);
             Vec3d normal3d = graph.triangles[res.tri].normal3d;
 //            triangleSet.insert(res.tri);
-            data[3 * (w * i + j)] = u8(127 + 120 * normal3d.x);
-            data[3 * (w * i + j) + 1] = u8(127 + 120 * normal3d.y);
-            data[3 * (w * i + j) + 2] = u8(127 + 120 * normal3d.z);
+            data[3 * (width * i + j)] = u8(127 + 120 * normal3d.x);
+            data[3 * (width * i + j) + 1] = u8(127 + 120 * normal3d.y);
+            data[3 * (width * i + j) + 2] = u8(127 + 120 * normal3d.z);
         }
     }
     cout << endl;
@@ -83,14 +83,14 @@ int main(int argc, char **argv) {
     filesystem::create_directories(dir);
     string outFilePath = dir + "/" + configParser.outFileName;
     cout << "\n" << "writing to file: " << outFilePath << endl;
-    stbi_write_png((outFilePath + ".png").c_str(), w, h, comp, data.data(), 0);
+    stbi_write_png((outFilePath + ".png").c_str(), width, height, comp, data.data(), 0);
 
     // writing log file
     ofstream myfile;
     myfile.open(outFilePath + ".log");
     auto a = chrono::system_clock::to_time_t(chrono::high_resolution_clock::now());
     myfile << "This is a log from " << ctime(&a);
-    myfile << "resolution      : " << w << " x " << h << "\n\n";
+    myfile << "resolution      : " << width << " x " << height << "\n\n";
     myfile << "mesh            : " << configParser.meshPath << "\n";
     myfile << "triangle count  : " << objParser.triangle_vertices.size() << "\n";
     myfile << "vertex count    : " << objParser.vertices.size() << "\n\n";
