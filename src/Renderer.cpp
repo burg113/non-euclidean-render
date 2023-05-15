@@ -202,9 +202,6 @@ void Renderer::render(State startState, double scale, const vector<LoggingTarget
     auto a2 = chrono::system_clock::now();
     cout << (a2 - a1).count();*/
 
-
-    log("\n");
-
     renderingTarget.writeOut({w, h}, data);
 }
 
