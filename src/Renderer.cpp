@@ -61,15 +61,11 @@ Renderer::Renderer(int w, int h, GeoGraph graph, RenderingTarget &target) : w(w)
 
     for (int i = 0; i < w; i++) {
         top[i].first = Vec2d((i + 0.5) - w / 2.0, -h / 2.0).normalized();
-        top[i].second.reserve(h / 4 * 3);
         bottom[i].first = Vec2d(w / 2.0 - (i + 0.5), h / 2.0).normalized();
-        bottom[i].second.reserve(h / 4 * 3);
     }
     for (int i = 0; i < h - 2; i++) {
         right[i].first = Vec2d(w / 2.0, (h - 1) / 2.0 - (i + 0.5)).normalized();
-        bottom[i].second.reserve(w / 4 * 3);
         left[i].first = Vec2d(-w / 2.0, (i + 0.5) - (h - 1) / 2.0).normalized();
-        bottom[i].second.reserve(w / 4 * 3);
     }
 
     // assuming w, h even
@@ -107,9 +103,11 @@ Renderer::Renderer(int w, int h, GeoGraph graph, RenderingTarget &target) : w(w)
 
     }
 
-    auto sortSubVector = [](auto &vec) {
-        for (auto &a: vec)
+    auto sortSubVector = [](vector<pair<Vec2d, vector<pair<float, int>>>> &vec) {
+        for (auto &a: vec) {
             std::sort(a.second.begin(), a.second.end());
+            a.second.shrink_to_fit();
+        }
     };
     sortSubVector(top);
     sortSubVector(bottom);
@@ -158,7 +156,7 @@ void Renderer::render(State startState, double scale, const vector<LoggingTarget
 
     vector<u8> data(w * h * 3);
     int count = 0;
-    auto renderPart = [&](vector<pair<Vec2d, vector<pair<float, int>>>> &vec /*,GeoGraph graph*/) {
+    auto renderPart = [&](vector<pair<Vec2d, vector<pair<float, int>>>> &vec) {
         count = 0;
         for (auto &borderPixel: vec) {
             State state = startState;
@@ -202,6 +200,6 @@ void Renderer::render(State startState, double scale, const vector<LoggingTarget
     auto a2 = chrono::system_clock::now();
     cout << (a2 - a1).count();*/
 
-    renderingTarget.writeOut({w, h}, data);
+    // renderingTarget.writeOut({w, h}, data);
 }
 
