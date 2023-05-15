@@ -3,6 +3,7 @@
 //
 #include <fstream>
 #include <time.h>
+#include <thread>
 #include "Renderer.h"
 #include "../lib/stb_image_write.h"
 
@@ -59,16 +60,16 @@ Renderer::Renderer(int w, int h, GeoGraph graph, RenderingTarget &target) : w(w)
     right = vector<pair<Vec2d, vector<pair<float, int>>>>(h - 2);
 
     for (int i = 0; i < w; i++) {
-        top[i].first = Vec2d((i+0.5) - w/2.0,-h/2.0).normalized();
-        top[i].second.reserve(h/4*3);
-        bottom[i].first = Vec2d( w/2.0 - (i+0.5),h/2.0).normalized();
-        bottom[i].second.reserve(h/4*3);
+        top[i].first = Vec2d((i + 0.5) - w / 2.0, -h / 2.0).normalized();
+        top[i].second.reserve(h / 4 * 3);
+        bottom[i].first = Vec2d(w / 2.0 - (i + 0.5), h / 2.0).normalized();
+        bottom[i].second.reserve(h / 4 * 3);
     }
-    for (int i = 0; i < h-2; i++) {
-        right[i].first = Vec2d( w/2.0,(h-1)/2.0 - (i+0.5)).normalized();
-        bottom[i].second.reserve(w/4*3);
-        left[i].first = Vec2d(-w/2.0, (i+0.5)-(h-1)/2.0).normalized();
-        bottom[i].second.reserve(w/4*3);
+    for (int i = 0; i < h - 2; i++) {
+        right[i].first = Vec2d(w / 2.0, (h - 1) / 2.0 - (i + 0.5)).normalized();
+        bottom[i].second.reserve(w / 4 * 3);
+        left[i].first = Vec2d(-w / 2.0, (i + 0.5) - (h - 1) / 2.0).normalized();
+        bottom[i].second.reserve(w / 4 * 3);
     }
 
     // assuming w, h even
@@ -107,12 +108,8 @@ Renderer::Renderer(int w, int h, GeoGraph graph, RenderingTarget &target) : w(w)
     }
 
     auto sortSubVector = [](auto &vec) {
-        int m = 0;
-        for (auto &a: vec) {
+        for (auto &a: vec)
             std::sort(a.second.begin(), a.second.end());
-            m = max(m,(int)a.second.size());
-        }
-        cout << "MAX:" << m ;
     };
     sortSubVector(top);
     sortSubVector(bottom);
@@ -150,7 +147,7 @@ void Renderer::renderDebug(State start, double scale, const vector<LoggingTarget
     long long renderTimeMs = chrono::duration_cast<chrono::milliseconds>(t2 - t1).count();
 
     log("rendering took    : " + to_string(renderTimeMs) + "ms");
-    log("pixel per second  : " + to_string((long long)w * h * 1000 / renderTimeMs));
+    log("pixel per second  : " + to_string((long long) w * h * 1000 / renderTimeMs));
 }
 
 void Renderer::render(State startState, double scale, const vector<LoggingTarget *> &loggingTargets) {
@@ -161,7 +158,7 @@ void Renderer::render(State startState, double scale, const vector<LoggingTarget
 
     vector<u8> data(w * h * 3);
     int count = 0;
-    auto renderPart = [&](vector<pair<Vec2d,vector<pair<float, int>>>> &vec) {
+    auto renderPart = [&](vector<pair<Vec2d, vector<pair<float, int>>>> &vec /*,GeoGraph graph*/) {
         count = 0;
         for (auto &borderPixel: vec) {
             State state = startState;
@@ -169,14 +166,13 @@ void Renderer::render(State startState, double scale, const vector<LoggingTarget
             float lastDist = 0;
             float nextHit = -1;
 
-            double trueScaleInverse = 100/(scale * w);
+            double trueScaleInverse = 100 / (scale * w);
             for (auto &[dist, index]: borderPixel.second) {
-                float rayDist = (dist - lastDist)* trueScaleInverse;
-                if(rayDist < nextHit){
+                float rayDist = (dist - lastDist) * trueScaleInverse;
+                if (rayDist < nextHit) {
                     nextHit -= rayDist;
                     state.pos += state.dir * rayDist;
-                }
-                else{
+                } else {
                     tie(state, nextHit) = graph.traverse(state, rayDist);
                 }
                 data[3 * index] = u8(127 + 120 * graph.triangles[state.tri].normal3d.x);
@@ -188,10 +184,24 @@ void Renderer::render(State startState, double scale, const vector<LoggingTarget
         }
     };
 
+
+    thread t1 = thread(renderPart, ref(top));
+    thread t2 = thread(renderPart, ref(bottom));
+    thread t3 = thread(renderPart, ref(right));
+    thread t4 = thread(renderPart, ref(left));
+    t1.join();
+    t2.join();
+    t3.join();
+    t4.join();
+
+    /*auto a1 = chrono::system_clock::now();
     renderPart(top);
     renderPart(bottom);
     renderPart(right);
     renderPart(left);
+    auto a2 = chrono::system_clock::now();
+    cout << (a2 - a1).count();*/
+
 
     log("\n");
 
