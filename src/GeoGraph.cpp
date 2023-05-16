@@ -117,23 +117,23 @@ GeoGraph::GeoGraph(vector<Vec3d> vertices, vector<tuple<int, int, int>> triangle
 }
 
 pair<State, float> GeoGraph::traverse(State state, float dist){
-    if (dist == 0)
-        return {state, 0};
+    while(true){
+        if (dist == 0)
+            return {state, 0};
 
-    Triangle myTri = triangles[state.tri];
-    auto [untilHit, side] = myTri.rayIntersect(state.pos, state.dir);
-    if(dist < untilHit){
-        state.pos += state.dir * dist;
-        return {state, untilHit-dist};
+        Triangle myTri = triangles[state.tri];
+        auto [untilHit, side] = myTri.rayIntersect(state.pos, state.dir);
+        if(dist < untilHit){
+            state.pos += state.dir * dist;
+            return {state, untilHit-dist};
+        }
+        dist -= untilHit;
+        state.pos = state.pos + state.dir*untilHit;
+        state.tri = myTri.nextTriangle[side];
+        state.dir = myTri.rotationMatrix[side] * state.dir;
+        float sidePosition = (myTri.vert[(side+1)%3] - myTri.vert[side]).normalized().dot(state.pos - myTri.vert[side]);
+        state.pos = myTri.nextVert[side][0] + (myTri.nextVert[side][1] - myTri.nextVert[side][0]).normalized() * sidePosition;
     }
-    dist -= untilHit;
-    state.pos = state.pos + state.dir*untilHit;
-    state.tri = myTri.nextTriangle[side];
-    state.dir = myTri.rotationMatrix[side] * state.dir;
-    float sidePosition = (myTri.vert[(side+1)%3] - myTri.vert[side]).normalized().dot(state.pos - myTri.vert[side]);
-    state.pos = myTri.nextVert[side][0] + (myTri.nextVert[side][1] - myTri.nextVert[side][0]).normalized() * sidePosition;
-
-    return traverse(state, dist);
 }
 
 
