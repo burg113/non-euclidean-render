@@ -34,6 +34,26 @@ Vec2d Triangle::getMid() {
     return (vert[0] + vert[1] + vert[2]) * (1.0f/3);
 }
 
+void Triangle::from3d(Vec3d a, Vec3d b, Vec3d c, Vec2d uvA, Vec2d uvB, Vec2d uvC) {
+    Vec3d aToB = b - a;
+    Vec3d aToC = c - a;
+    Vec3d right = aToB.normalized();
+    this->normal3d = right.cross(aToC.normalized()).normalized();
+    Vec3d up = normal3d.cross(right).normalized();
+    this->vert[0] = Vec2d(0, 0);
+    this->vert[1] = Vec2d(aToB.len(), 0);
+    this->vert[2] = Vec2d(right.dot(aToC), up.dot(aToC));
+    Vec2d uvAtoB = uvB-uvA;
+    Vec2d uvAtoC = uvC-uvA;
+    this->uv0 = uvA;
+    this->uvRight = uvAtoB / vert[1].x;
+    this->uvUp = (uvAtoC - uvAtoB * uvAtoC.dot(uvAtoB) / uvAtoB.lenSq()) / vert[2].y;
+}
+
+Vec2d Triangle::getUV(Vec2d pos) const {
+    return uv0 + uvRight * pos.x + uvUp * pos.y;
+}
+
 ostream& operator<<(ostream &stream, Triangle triangle){
     stream << "===============================\n";
     stream << "A: " << triangle.vert[0] << "  B: " << triangle.vert[1] << "  C: " << triangle.vert[2] << "\n";
@@ -42,7 +62,7 @@ ostream& operator<<(ostream &stream, Triangle triangle){
     return stream;
 }
 
-GeoGraph::GeoGraph(vector<Vec3d> vertices, vector<tuple<int, int, int>> triangleVerts) {
+GeoGraph::GeoGraph(vector<Vec3d> vertices, vector<tuple<int, int, int>> triangleVerts, vector<Vec2d> uv, vector<tuple<int, int, int>> triangleUV) {
     int n = (int)triangleVerts.size();
     triangles.resize(n);
 
@@ -71,20 +91,8 @@ GeoGraph::GeoGraph(vector<Vec3d> vertices, vector<tuple<int, int, int>> triangle
 
     for(int i = 0; i < n; i++){
         auto [ind0, ind1, ind2] = triangleVerts[i];
-        // flatten triangle a,b,c to 2d
-        // map a -> (0, 0), b -> (*, 0), c -> (*, *)
-        Vec3d a3 = vertices[ind0];
-        Vec3d b3 = vertices[ind1];
-        Vec3d c3 = vertices[ind2];
-        Vec3d aToB = b3-a3;
-        Vec3d aToC = c3-a3;
-        Vec3d v = aToB.normalized();
-        Vec3d normal = v.cross(aToC.normalized()).normalized();
-        Vec3d w = normal.cross(v).normalized();
-        triangles[i].vert[0] = {0, 0};
-        triangles[i].vert[1] = {aToB.len(), 0};
-        triangles[i].vert[2] = {v.dot(aToC), w.dot(aToC)};
-        triangles[i].normal3d = normal;
+        auto [uvInd0, uvInd1, uvInd2] = triangleUV[i];
+        triangles[i].from3d(vertices[ind0], vertices[ind1], vertices[ind2], uv[uvInd0], uv[uvInd1], uv[uvInd2]);
         // corresponding edges
         processEdge(ind0, ind1, i, 0);
         processEdge(ind1, ind2, i, 1);
@@ -107,7 +115,7 @@ GeoGraph::GeoGraph(vector<Vec3d> vertices, vector<tuple<int, int, int>> triangle
             Vec2d my = (myA - myB).normalized();
             Vec2d myPerp = my.perp();
             Vec2d to = (toA - toB).normalized();
-            Mat2d mat = Mat2d{to, to.perp()} * Mat2d{{my.x, myPerp.x}, {my.y, myPerp.y}};
+            Mat2d mat = Mat2d{to, to.perp()} * Mat2d{Vec2d(my.x, myPerp.x), Vec2d(my.y, myPerp.y)};
 
             triangle.rotationMatrix[side] = mat;
             triangle.nextVert[side][0] = toB;
