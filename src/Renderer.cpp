@@ -4,6 +4,7 @@
 #include <fstream>
 #include <time.h>
 #include <thread>
+#include <queue>
 #include "Renderer.h"
 #include "../lib/stb_image_write.h"
 
@@ -19,6 +20,7 @@ void FileOut::writeOut(std::string &str) {
     file << str;
     file.close();
 }
+
 
 void FileOut::writeOutNewLine(std::string &str) {
     filesystem::create_directories(path);
@@ -52,20 +54,20 @@ void ConsoleOut::writeOutNewLine(std::string &str) {
     cout << str << "\n";
 }
 
-Renderer::Renderer(int w, int h, GeoGraph graph, RenderingTarget &target) : w(w), h(h), graph(std::move(graph)),
+Renderer::Renderer(int w, int h, GeoGraph graph, RenderingTarget &target) : w(w), h(h), threadContext(w,h,graph),
                                                                             renderingTarget(target) {
-    top = vector<pair<Vec2d, vector<pair<float, int>>>>(w);
-    bottom = vector<pair<Vec2d, vector<pair<float, int>>>>(w);
-    left = vector<pair<Vec2d, vector<pair<float, int>>>>(h - 2);
-    right = vector<pair<Vec2d, vector<pair<float, int>>>>(h - 2);
+    top = vector<Ray>(w);
+    bottom = vector<Ray>(w);
+    left = vector<Ray>(h - 2);
+    right = vector<Ray>(h - 2);
 
     for (int i = 0; i < w; i++) {
-        top[i].first = Vec2d((i + 0.5) - w / 2.0, -h / 2.0).normalized();
-        bottom[i].first = Vec2d(w / 2.0 - (i + 0.5), h / 2.0).normalized();
+        top[i].direction = Vec2d((i + 0.5) - w / 2.0, -h / 2.0).normalized();
+        bottom[i].direction = Vec2d(w / 2.0 - (i + 0.5), h / 2.0).normalized();
     }
     for (int i = 0; i < h - 2; i++) {
-        right[i].first = Vec2d(w / 2.0, (h - 1) / 2.0 - (i + 0.5)).normalized();
-        left[i].first = Vec2d(-w / 2.0, (i + 0.5) - (h - 1) / 2.0).normalized();
+        right[i].direction = Vec2d(w / 2.0, (h - 1) / 2.0 - (i + 0.5)).normalized();
+        left[i].direction = Vec2d(-w / 2.0, (i + 0.5) - (h - 1) / 2.0).normalized();
     }
 
     // assuming w, h even
@@ -77,25 +79,25 @@ Renderer::Renderer(int w, int h, GeoGraph graph, RenderingTarget &target) : w(w)
             // lower triangle:(y+0.5)/(abs(x+0.5)) > h / w
             if ((y + 0.5) * w >= h * abs(x + 0.5)) {
                 // x * h/y = i
-                top[clamp(w / 2 + (x * h + h / 2) / (y * 2 + 1), 0, w - 1)].second.emplace_back(
+                top[clamp(w / 2 + (x * h + h / 2) / (y * 2 + 1), 0, w - 1)].renderPoints.emplace_back(
                         Vec2d(x + 0.5, y + 0.5).len(), iy * w + ix);
             }
                 // upper triangle (y+0.5)/abs(x+0.5) < - h / w
             else if ((y + 0.5) * w <= -h * abs(x + 0.5)) {
-                bottom[clamp(w / 2 + (x * h + h / 2) / (y * 2 + 1), 0, w - 1)].second.emplace_back(
+                bottom[clamp(w / 2 + (x * h + h / 2) / (y * 2 + 1), 0, w - 1)].renderPoints.emplace_back(
                         Vec2d(x + 0.5, y + 0.5).len(), iy * w + ix);
             }
                 // right triangle (x+0.5)/(abs(y+0.5)) > w/h
             else if ((x + 0.5) * h >= w * abs(y + 0.5)) {
                 // y * w /x
 
-                right[clamp(h / 2 + (y * w + w / 2) / (x * 2 + 1), 0, h - 3)].second.emplace_back(
+                right[clamp(h / 2 + (y * w + w / 2) / (x * 2 + 1), 0, h - 3)].renderPoints.emplace_back(
                         Vec2d(x + 0.5, y + 0.5).len(),
                         iy * w + ix);
             }
                 // left triangle (x+0.5)/(abs(y+0.5)) < -w/h
             else {
-                left[clamp(h / 2 + (y * w + w / 2) / (x * 2 + 1), 0, h - 3)].second.emplace_back(
+                left[clamp(h / 2 + (y * w + w / 2) / (x * 2 + 1), 0, h - 3)].renderPoints.emplace_back(
                         Vec2d(x + 0.5, y + 0.5).len(),
                         iy * w + ix);
             }
@@ -103,16 +105,89 @@ Renderer::Renderer(int w, int h, GeoGraph graph, RenderingTarget &target) : w(w)
 
     }
 
-    auto sortSubVector = [](vector<pair<Vec2d, vector<pair<float, int>>>> &vec) {
+    auto sortSubVector = [](vector<Ray> &vec) {
         for (auto &a: vec) {
-            std::sort(a.second.begin(), a.second.end());
-            a.second.shrink_to_fit();
+            std::sort(a.renderPoints.begin(), a.renderPoints.end());
+            a.renderPoints.shrink_to_fit();
         }
     };
     sortSubVector(top);
     sortSubVector(bottom);
     sortSubVector(right);
     sortSubVector(left);
+
+    auto splitChunks= [&](vector<Ray> &list) {
+        int count = 0;
+        vector<Ray*> current;
+        for (auto a : list) {
+            count += a.renderPoints.size();
+            current.push_back(&a);
+            if (count > pixelPerChunk) {
+                count =0;
+                chunks.push_back(current);
+                current = vector<Ray*>();
+            }
+        }
+        if (!current.empty())
+            chunks.push_back(current);
+    };
+    splitChunks(top);
+    splitChunks(bottom);
+    splitChunks(right);
+    splitChunks(left);
+
+    auto renderThread = [] (ThreadContext &threadContext) {};
+        while (true) {
+            threadContext.dataAccesMutex.lock();
+
+            if (threadContext.renderQueue.empty()) {
+                threadContext.dataAccesMutex.unlock();
+                unique_lock<mutex> ul;
+                threadContext.newDataCond.wait(ul);
+                threadContext.dataAccesMutex.lock();
+            }
+
+            RenderChunk chunk = threadContext.renderQueue.front();
+            threadContext.renderQueue.pop();
+            threadContext.dataAccesMutex.unlock();
+
+            State startState = chunk.start;
+            vector<Ray*> rays = chunk.rays;
+            for (auto ray: rays) {
+                State state = startState;
+                state.dir = ray->direction;
+                float lastDist = 0;
+                float nextHit = -1;
+
+                double trueScaleInverse = 100 / (chunk.scale * threadContext.width);
+                for (auto &[dist, index]: ray->renderPoints) {
+                    float rayDist = (dist - lastDist) * trueScaleInverse;
+                    if (rayDist < nextHit) {
+                        nextHit -= rayDist;
+                        state.pos += state.dir * rayDist;
+                    } else {
+                        tie(state, nextHit) = graph.traverse(state, rayDist);
+                    }
+                    // figure out which renderBuffer to write to
+
+                    /*threadContext.renderBuffer[0].setRange(3 * index, {u8(127 + 120 * graph.triangles[state.tri].normal3d.x),
+                                                                       u8(127 + 120 * graph.triangles[state.tri].normal3d.y)},
+                                                                        u8(127 + 120 * graph.triangles[state.tri].normal3d.z))
+                    */
+                    //data[3 * index] = u8(127 + 120 * graph.triangles[state.tri].normal3d.x);
+                    //data[3 * index + 1] = u8(127 + 120 * graph.triangles[state.tri].normal3d.y);
+                    //data[3 * index + 2] = u8(127 + 120 * graph.triangles[state.tri].normal3d.z);
+                    lastDist = dist;
+                }
+            }
+
+
+        }
+
+    };
+    //renderThreads = vector<thread>(10,thread(renderThread,ref(threadContext)));
+
+
 }
 
 void Renderer::renderDebug(State start, double scale, const vector<LoggingTarget *> &loggingTargets,
@@ -155,32 +230,6 @@ void Renderer::render(State startState, double scale, const vector<LoggingTarget
     };
 
     vector<u8> data(w * h * 3);
-    int count = 0;
-    auto renderPart = [&](vector<pair<Vec2d, vector<pair<float, int>>>> &vec) {
-        count = 0;
-        for (auto &borderPixel: vec) {
-            State state = startState;
-            state.dir = borderPixel.first;
-            float lastDist = 0;
-            float nextHit = -1;
-
-            double trueScaleInverse = 100 / (scale * w);
-            for (auto &[dist, index]: borderPixel.second) {
-                float rayDist = (dist - lastDist) * trueScaleInverse;
-                if (rayDist < nextHit) {
-                    nextHit -= rayDist;
-                    state.pos += state.dir * rayDist;
-                } else {
-                    tie(state, nextHit) = graph.traverse(state, rayDist);
-                }
-                data[3 * index] = u8(127 + 120 * graph.triangles[state.tri].normal3d.x);
-                data[3 * index + 1] = u8(127 + 120 * graph.triangles[state.tri].normal3d.y);
-                data[3 * index + 2] = u8(127 + 120 * graph.triangles[state.tri].normal3d.z);
-                lastDist = dist;
-            }
-            count++;
-        }
-    };
 
 
     thread t1 = thread(renderPart, ref(top));
@@ -202,4 +251,8 @@ void Renderer::render(State startState, double scale, const vector<LoggingTarget
 
     // renderingTarget.writeOut({w, h}, data);
 }
+
+
+                                                                dataAccesMutex(dataAccesMutex), chunks(chunks),
+                                                                newDataCond(newDataCond) {}
 
