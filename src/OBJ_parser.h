@@ -12,11 +12,11 @@
 struct OBJ_parser {
     std::vector<Vec3d> vertices;
     std::vector<Vec3d> normals;
-    std::vector<Vec2d> textureCords;
+    std::vector<Vec2d> uv;
 
-    std::vector<std::tuple<int,int,int>> triangle_vertices;
-    std::vector<std::tuple<int,int,int>> triangle_normals;
-    std::vector<std::tuple<int,int,int>> triangle_textureCords;
+    std::vector<std::tuple<int,int,int>> triangleVertices;
+    std::vector<std::tuple<int,int,int>> triangleNormals;
+    std::vector<std::tuple<int,int,int>> triangleUV;
 
     void loadFromFile(std::string path) noexcept(false);
 

@@ -31,7 +31,8 @@ int main(int argc, char **argv) {
     objParser.loadFromFile(configParser.meshPath);
     cout << "finished " << endl;
 
-    GeoGraph graph(objParser.vertices, objParser.triangle_vertices);
+
+    GeoGraph graph(objParser.vertices, objParser.triangleVertices, objParser.uv, objParser.triangleUV);
 
 
     auto time = chrono::high_resolution_clock::now().time_since_epoch();
@@ -49,7 +50,7 @@ int main(int argc, char **argv) {
     map<string, string> debugInfo;
 
     debugInfo["mesh"] = getFileName(configParser.meshPath);
-    debugInfo["triangles"] = to_string(objParser.triangle_vertices.size());
+    debugInfo["triangles"] = to_string(objParser.triangleVertices.size());
     debugInfo["vertices"] = to_string(objParser.vertices.size());
 
     FileOut logFile(outPath, configParser.outFileName + ".log");
