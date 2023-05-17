@@ -9,6 +9,7 @@
 #include "../lib/stb_image_write.h"
 
 void FileOut::writeOut(pair<int, int> resolution, vector<u8> &data) {
+    // cout << "writing to " << path << endl;
     filesystem::create_directories(path);
     stbi_write_png((path + name).c_str(), resolution.first, resolution.second, 3, data.data(), 0);
 }
@@ -54,7 +55,7 @@ void ConsoleOut::writeOutNewLine(std::string &str) {
     cout << str << "\n";
 }
 
-Renderer::Renderer(int w, int h, GeoGraph graph, RenderingTarget &target) : w(w), h(h), threadContext(w,h,graph),
+Renderer::Renderer(int w, int h, GeoGraph graph, RenderingTarget &target) : w(w), h(h), threadContext(w, h, graph),
                                                                             renderingTarget(target) {
     top = vector<Ray>(w);
     bottom = vector<Ray>(w);
@@ -116,18 +117,19 @@ Renderer::Renderer(int w, int h, GeoGraph graph, RenderingTarget &target) : w(w)
     sortSubVector(right);
     sortSubVector(left);
 
-    auto splitChunks= [&](vector<Ray> &list) {
+    auto splitChunks = [&](vector<Ray> &list) {
         int count = 0;
-        vector<Ray*> current;
-        for (auto a : list) {
+        vector<Ray *> current;
+        for (Ray &a: list) {
             count += a.renderPoints.size();
             current.push_back(&a);
             if (count > pixelPerChunk) {
-                count =0;
+                count = 0;
                 chunks.push_back(current);
-                current = vector<Ray*>();
+                current = vector<Ray *>();
             }
         }
+
         if (!current.empty())
             chunks.push_back(current);
     };
@@ -136,23 +138,38 @@ Renderer::Renderer(int w, int h, GeoGraph graph, RenderingTarget &target) : w(w)
     splitChunks(right);
     splitChunks(left);
 
-    auto renderThread = [] (ThreadContext &threadContext) {};
+    auto renderThread = [](ThreadContext &threadContext) {
+        cout << "rt: awake" << endl;
         while (true) {
-            threadContext.dataAccesMutex.lock();
+
+            // cout << "rt: fetching data" << endl;
+            threadContext.renderQueueMutex.lock();
+            // cout << "rt: locked render queue" << endl;
 
             if (threadContext.renderQueue.empty()) {
-                threadContext.dataAccesMutex.unlock();
-                unique_lock<mutex> ul;
+                threadContext.renderQueueMutex.unlock();
+                // cout << "rt: unlocked render queue" << endl;
+                //cout << "rt: trying to lock newDataCondMutex" << endl;
+                unique_lock<mutex> ul(threadContext.newDataCondMutex);
+                cout << "rt: waiting" << endl;
+
                 threadContext.newDataCond.wait(ul);
-                threadContext.dataAccesMutex.lock();
+                // cout << "rt: received new data" << endl;
+                threadContext.renderQueueMutex.lock();
             }
 
             RenderChunk chunk = threadContext.renderQueue.front();
             threadContext.renderQueue.pop();
-            threadContext.dataAccesMutex.unlock();
+            threadContext.renderQueueMutex.unlock();
+            // cout << "rt: unlocked" << endl;
+            // cout << "rt: got chunk " << chunk.scale << endl;
 
+            int frame = chunk.frame;
             State startState = chunk.start;
-            vector<Ray*> rays = chunk.rays;
+            vector<Ray *> &rays = *chunk.rays;
+            auto t1 = chrono::high_resolution_clock::now();
+
+            // cout << "rt: starting batch" << endl;
             for (auto ray: rays) {
                 State state = startState;
                 state.dir = ray->direction;
@@ -161,33 +178,71 @@ Renderer::Renderer(int w, int h, GeoGraph graph, RenderingTarget &target) : w(w)
 
                 double trueScaleInverse = 100 / (chunk.scale * threadContext.width);
                 for (auto &[dist, index]: ray->renderPoints) {
+                    // traversing graph until the next point is hit
                     float rayDist = (dist - lastDist) * trueScaleInverse;
                     if (rayDist < nextHit) {
                         nextHit -= rayDist;
                         state.pos += state.dir * rayDist;
                     } else {
-                        tie(state, nextHit) = graph.traverse(state, rayDist);
+                        tie(state, nextHit) = threadContext.graph.traverse(state, rayDist);
                     }
-                    // figure out which renderBuffer to write to
 
-                    /*threadContext.renderBuffer[0].setRange(3 * index, {u8(127 + 120 * graph.triangles[state.tri].normal3d.x),
-                                                                       u8(127 + 120 * graph.triangles[state.tri].normal3d.y)},
-                                                                        u8(127 + 120 * graph.triangles[state.tri].normal3d.z))
-                    */
-                    //data[3 * index] = u8(127 + 120 * graph.triangles[state.tri].normal3d.x);
-                    //data[3 * index + 1] = u8(127 + 120 * graph.triangles[state.tri].normal3d.y);
-                    //data[3 * index + 2] = u8(127 + 120 * graph.triangles[state.tri].normal3d.z);
+                    // writing out data todo: possible problems with poping by main render thread at same time???
+                    // no mutex needed as no two threads should render the same part of the image
+                    bool foundTarget = false;
+                    for (RenderBuffer &rb: threadContext.renderBuffers) {
+                        if (rb.frame == frame) {
+                            // cout << "rt: setting out data" << endl;
+                            rb.setRange(3 * index,
+                                        {u8(127 + 120 * threadContext.graph.triangles[state.tri].normal3d.x),
+                                         u8(127 + 120 * threadContext.graph.triangles[state.tri].normal3d.y),
+                                         u8(127 + 120 * threadContext.graph.triangles[state.tri].normal3d.z)});
+                            foundTarget = true;
+                            break;
+                        }
+                    }
+                    if (!foundTarget)
+                        cerr << "WARNING: render thread could not find target!" << endl;
                     lastDist = dist;
                 }
             }
+            // cout << "rt: finished batch" << endl;
+            auto t2 = chrono::high_resolution_clock::now();
+            // cout << "t: " << chrono::duration_cast<chrono::milliseconds>(t2 - t1).count() << "ms" << endl;
+
 
 
         }
 
     };
-    //renderThreads = vector<thread>(10,thread(renderThread,ref(threadContext)));
 
+    renderThreads = vector<thread>(10);
+    for (int i = 0; i < renderThreadAmount; i++)
+        renderThreads.emplace_back(renderThread, ref(threadContext));
 
+    auto outThread = [](RenderingTarget &target, ThreadContext &threadContext) {
+
+        while (true) {
+            auto t1 = chrono::high_resolution_clock::now();
+
+            //cout << "# waiting for a new frame" << endl;
+            while (threadContext.renderBuffers.empty())
+                int a = 0;
+            //cout << "# waiting for frame to finish rendering..." << endl;
+            threadContext.renderBuffers.front().waitFull();
+            //cout << "# got full frame" << endl;
+            RenderBuffer &rb = threadContext.renderBuffers.front();
+            vector<u8> data = rb.getData();
+            // todo: comment in
+            //target.writeOut(pair<int, int>(threadContext.width, threadContext.height), data);
+
+            //cout << "# rendered full frame" << endl;
+            threadContext.renderBuffers.pop_front();
+            auto t2 = chrono::high_resolution_clock::now();
+            cout << "# frame took: " << chrono::duration_cast<chrono::milliseconds>(t2 - t1).count() << "ms" << endl;
+        }
+    };
+    mainThread = thread(outThread, ref(renderingTarget), ref(threadContext));
 }
 
 void Renderer::renderDebug(State start, double scale, const vector<LoggingTarget *> &loggingTargets,
@@ -206,7 +261,7 @@ void Renderer::renderDebug(State start, double scale, const vector<LoggingTarget
     log("mesh              : " + info["mesh"]);
     log("triangles (mesh)  : " + info["triangles"]);
     log("vertices (mesh)   : " + info["vertices"]);
-    log("triangles (graph) : " + to_string(graph.triangles.size()));
+    log("triangles (graph) : " + to_string(threadContext.graph.triangles.size()));
     log("");
     log("scale             : " + to_string(int(scale)) + "." + to_string(int(scale * 10) % 10));
     for (const string &str: debugInfo)
@@ -231,28 +286,27 @@ void Renderer::render(State startState, double scale, const vector<LoggingTarget
 
     vector<u8> data(w * h * 3);
 
+    cout << "m initializing render: " << endl;
+    cout << "m adding new renderBuffer..." << endl;
+    threadContext.renderBuffers.emplace_back(frameCount, threadContext.width * threadContext.height * 3);
+    cout << "m finished" << endl;
 
-    thread t1 = thread(renderPart, ref(top));
-    thread t2 = thread(renderPart, ref(bottom));
-    thread t3 = thread(renderPart, ref(right));
-    thread t4 = thread(renderPart, ref(left));
-    t1.join();
-    t2.join();
-    t3.join();
-    t4.join();
-
-    /*auto a1 = chrono::system_clock::now();
-    renderPart(top);
-    renderPart(bottom);
-    renderPart(right);
-    renderPart(left);
-    auto a2 = chrono::system_clock::now();
-    cout << (a2 - a1).count();*/
-
-    // renderingTarget.writeOut({w, h}, data);
+    cout << "locking mutex..." << endl;
+    threadContext.renderQueueMutex.lock();
+    cout << "m finished" << endl;
+    for (vector<Ray *> &rays: chunks) {
+        RenderChunk chunk;
+        chunk.frame = frameCount;
+        chunk.start = startState;
+        chunk.scale = scale;
+        chunk.rays = &rays;
+        threadContext.renderQueue.push(chunk);
+    }
+    cout << "m added chunks" << endl;
+    threadContext.renderQueueMutex.unlock();
+    cout << "m unlocked mutex" << endl;
+    frameCount++;
+    threadContext.newDataCond.notify_all();
+    cout << "m notified all" << endl;
 }
-
-
-                                                                dataAccesMutex(dataAccesMutex), chunks(chunks),
-                                                                newDataCond(newDataCond) {}
 

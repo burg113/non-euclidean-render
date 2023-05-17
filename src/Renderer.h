@@ -9,6 +9,8 @@
 
 #include <utility>
 #include <mutex>
+#include <thread>
+#include <queue>
 #include <condition_variable>
 
 #include "OBJ_parser.h"
@@ -33,10 +35,11 @@ struct FileOut : RenderingTarget, LoggingTarget {
     string name;
 
     FileOut(const string path, const string name) : path(path), name(name) {
-        filesystem::create_directories(path);
-        ofstream file;
-        file.open(path + name);
-        file.close();
+        // todo: comment in
+        //filesystem::create_directories(path);
+        //ofstream file;
+        //file.open(path + name);
+        //file.close();
     }
 
     void writeOut(pair<int, int> resolution, vector<u8> &data) override;
@@ -61,41 +64,61 @@ struct Ray {
     vector<pair<float, int>> renderPoints;
 };
 struct RenderChunk {
+    int frame;
     State start;
     double scale;
-    vector<Ray *> rays;
+    vector<Ray *> *rays;
 };
 
 struct RenderBuffer {
 private:
     vector<u8> pixel;
-    int count;
+    vector<bool> pixelSet;
+    int count = 0;
     bool full = false;
     mutex fullMut;
+    mutex countMut;
 
 public:
     condition_variable condVar;
     const int frame;
 
     RenderBuffer(const int frame, int size) : frame(frame) {
-        pixel = vector<u8>(size);
+
+        pixel = vector<u8>(size,48);
         fullMut.lock();
     }
 
-    void setRange(int start, vector<u8> &data) {
-        if (fullMut.try_lock())
+    void setRange(int start, vector<u8> data) {
+        /*if (fullMut.try_lock()) {
+            for (auto a : pixel)
+                cout << a;
+            cout << endl;
             throw runtime_error("cannot write to full buffer");
-        for (int i = 0; i < data.size(); i++) {
+        }*/
+
+        for (int i = 0; i < (int)data.size(); i++) {
             pixel[i + start] = data[i];
         }
+
+        countMut.lock();
         count += (int) data.size();
-        if (count == data.size())
+        countMut.unlock();
+
+        // cout << "- data: " << count << " of " << pixel.size() << "  pos: " << start << "\n";
+        if (count == pixel.size()) {
+            // cout << "- data full" << endl;
             fullMut.unlock();
+        }
     }
 
+    vector<u8> getData() {
+        return pixel;
+    }
 
     void waitFull() {
         fullMut.lock();
+        // cout << "### is full" << endl;
         fullMut.unlock();
     }
 
@@ -107,19 +130,25 @@ struct ThreadContext {
 
     GeoGraph graph;
 
-    mutex dataAccesMutex;
+    mutex renderQueueMutex;
     queue<RenderChunk> renderQueue;
 
     condition_variable newDataCond;
-    deque<RenderBuffer> renderBuffer;
+    mutex newDataCondMutex;
+    deque<RenderBuffer> renderBuffers;
 
     ThreadContext(int width, int height, const GeoGraph graph) : width(width), height(height),
-                                                                  graph(graph) {};
+                                                                 graph(graph) {
+
+
+    };
 
 };
 
 struct Renderer {
     const static int pixelPerChunk = 10000;
+    const static int renderThreadAmount = 10;
+    int frameCount = 0;
     int w, h;
     RenderingTarget &renderingTarget;
     vector<Ray> top;
@@ -129,12 +158,8 @@ struct Renderer {
 
     vector<vector<Ray *>> chunks;
 
-
     thread mainThread;
     vector<thread> renderThreads;
-
-    mutex renderInMutex;
-    mutex renderOutMutex;
 
     ThreadContext threadContext;
 

@@ -31,9 +31,7 @@ int main(int argc, char **argv) {
     objParser.loadFromFile(configParser.meshPath);
     cout << "finished " << endl;
 
-
     GeoGraph graph(objParser.vertices, objParser.triangleVertices, objParser.uv, objParser.triangleUV);
-
 
     auto time = chrono::high_resolution_clock::now().time_since_epoch();
     string outPath = configParser.outPath + getFileName(configParser.meshPath) + "/";
@@ -56,11 +54,15 @@ int main(int argc, char **argv) {
     FileOut logFile(outPath, configParser.outFileName + ".log");
     ConsoleOut consoleOut = ConsoleOut();
     vector<LoggingTarget *> loggingTargets = vector<LoggingTarget *>();
-    loggingTargets.push_back(&logFile);
-    loggingTargets.push_back(&consoleOut);
 
-    renderer.renderDebug(state, configParser.scale, loggingTargets, debugInfo);
+    // todo: comment in
+    //loggingTargets.push_back(&logFile);
+    //loggingTargets.push_back(&consoleOut);
+
+    for (int i=0;i<10;i++)
+        renderer.renderDebug(state, configParser.scale, loggingTargets, debugInfo);
     //renderer.render(state,configParser.scale);
+    renderer.mainThread.join();
 
     cout << "\n" << "done!";
     return 0;

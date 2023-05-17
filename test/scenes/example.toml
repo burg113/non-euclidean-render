@@ -1,12 +1,12 @@
 # this is an example scene file
 [mesh]
 # file = "../models/cube.obj"
-file = "../models/sphere_ico_16.obj" # relative to this file
+file = "../models/sphere_ico_32.obj" # relative to this file
 
 [render]
 width = 1920
 height = 1080
-scale = 40
+scale = 100
 
 [output]
 path = "../../test/out/" # relative to this file
