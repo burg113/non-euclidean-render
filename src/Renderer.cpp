@@ -146,14 +146,20 @@ Renderer::Renderer(int w, int h, GeoGraph graph, RenderingTarget &target) : w(w)
             threadContext.renderQueueMutex.lock();
             // cout << "rt: locked render queue" << endl;
 
-            if (threadContext.renderQueue.empty()) {
+            while (threadContext.renderQueue.empty()) {
                 threadContext.renderQueueMutex.unlock();
                 // cout << "rt: unlocked render queue" << endl;
                 //cout << "rt: trying to lock newDataCondMutex" << endl;
-                unique_lock<mutex> ul(threadContext.newDataCondMutex);
+                unique_lock<mutex> ul(threadContext.newDataCondMutex,defer_lock_t());
+                ul.lock();
                 cout << "rt: waiting" << endl;
-
-                threadContext.newDataCond.wait(ul);
+                threadContext.newDataCond.wait(ul,[&](){
+                    threadContext.renderQueueMutex.lock();
+                    bool b = threadContext.renderQueue.empty();
+                    threadContext.renderQueueMutex.unlock();
+                    return !b;
+                });
+                ul.unlock();
                 // cout << "rt: received new data" << endl;
                 threadContext.renderQueueMutex.lock();
             }
