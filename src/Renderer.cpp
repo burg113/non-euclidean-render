@@ -176,6 +176,7 @@ Renderer::Renderer(int w, int h, GeoGraph graph, RenderingTarget &target) : w(w)
                 float lastDist = 0;
                 float nextHit = -1;
 
+                int countAdd = 0;
                 double trueScaleInverse = 100 / (chunk.scale * threadContext.width);
                 for (auto &[dist, index]: ray->renderPoints) {
                     // traversing graph until the next point is hit
@@ -189,29 +190,18 @@ Renderer::Renderer(int w, int h, GeoGraph graph, RenderingTarget &target) : w(w)
 
                     // writing out data todo: possible problems with poping by main render thread at same time???
                     // no mutex needed as no two threads should render the same part of the image
-                    bool foundTarget = false;
-                    for (RenderBuffer &rb: threadContext.renderBuffers) {
-                        if (rb.frame == frame) {
-                            // cout << "rt: setting out data" << endl;
-                            rb.setRange(3 * index,
-                                        {u8(127 + 120 * threadContext.graph.triangles[state.tri].normal3d.x),
-                                         u8(127 + 120 * threadContext.graph.triangles[state.tri].normal3d.y),
-                                         u8(127 + 120 * threadContext.graph.triangles[state.tri].normal3d.z)});
-                            foundTarget = true;
-                            break;
-                        }
-                    }
-                    if (!foundTarget)
-                        cerr << "WARNING: render thread could not find target!" << endl;
+                    chunk.rb->pixel[3*index  ] = u8(127 + 120 * threadContext.graph.triangles[state.tri].normal3d.x);
+                    chunk.rb->pixel[3*index+1] = u8(127 + 120 * threadContext.graph.triangles[state.tri].normal3d.y);
+                    chunk.rb->pixel[3*index+2] = u8(127 + 120 * threadContext.graph.triangles[state.tri].normal3d.z);
+                    countAdd += 3;
                     lastDist = dist;
                 }
+                chunk.rb->notifyCount(countAdd);
+
             }
             // cout << "rt: finished batch" << endl;
             auto t2 = chrono::high_resolution_clock::now();
             // cout << "t: " << chrono::duration_cast<chrono::milliseconds>(t2 - t1).count() << "ms" << endl;
-
-
-
         }
 
     };
@@ -229,14 +219,15 @@ Renderer::Renderer(int w, int h, GeoGraph graph, RenderingTarget &target) : w(w)
             while (threadContext.renderBuffers.empty())
                 int a = 0;
             //cout << "# waiting for frame to finish rendering..." << endl;
-            threadContext.renderBuffers.front().waitFull();
+            threadContext.renderBuffers.front()->waitFull();
             //cout << "# got full frame" << endl;
-            RenderBuffer &rb = threadContext.renderBuffers.front();
-            vector<u8> data = rb.getData();
+            RenderBuffer *rb = threadContext.renderBuffers.front();
+            vector<u8> data = rb->getData();
             // todo: comment in
             //target.writeOut(pair<int, int>(threadContext.width, threadContext.height), data);
 
             //cout << "# rendered full frame" << endl;
+            delete rb;
             threadContext.renderBuffers.pop_front();
             auto t2 = chrono::high_resolution_clock::now();
             cout << "# frame took: " << chrono::duration_cast<chrono::milliseconds>(t2 - t1).count() << "ms" << endl;
@@ -288,7 +279,8 @@ void Renderer::render(State startState, double scale, const vector<LoggingTarget
 
     cout << "m initializing render: " << endl;
     cout << "m adding new renderBuffer..." << endl;
-    threadContext.renderBuffers.emplace_back(frameCount, threadContext.width * threadContext.height * 3);
+    RenderBuffer* renderBuffer = new RenderBuffer(frameCount, threadContext.width * threadContext.height * 3);
+    threadContext.renderBuffers.push_back(renderBuffer);
     cout << "m finished" << endl;
 
     cout << "locking mutex..." << endl;
@@ -297,6 +289,7 @@ void Renderer::render(State startState, double scale, const vector<LoggingTarget
     for (vector<Ray *> &rays: chunks) {
         RenderChunk chunk;
         chunk.frame = frameCount;
+        chunk.rb = renderBuffer;
         chunk.start = startState;
         chunk.scale = scale;
         chunk.rays = &rays;

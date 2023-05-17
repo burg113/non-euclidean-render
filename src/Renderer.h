@@ -63,16 +63,9 @@ struct Ray {
     Vec2d direction;
     vector<pair<float, int>> renderPoints;
 };
-struct RenderChunk {
-    int frame;
-    State start;
-    double scale;
-    vector<Ray *> *rays;
-};
 
 struct RenderBuffer {
 private:
-    vector<u8> pixel;
     vector<bool> pixelSet;
     int count = 0;
     bool full = false;
@@ -80,6 +73,7 @@ private:
     mutex countMut;
 
 public:
+    vector<u8> pixel;
     condition_variable condVar;
     const int frame;
 
@@ -89,22 +83,10 @@ public:
         fullMut.lock();
     }
 
-    void setRange(int start, vector<u8> data) {
-        /*if (fullMut.try_lock()) {
-            for (auto a : pixel)
-                cout << a;
-            cout << endl;
-            throw runtime_error("cannot write to full buffer");
-        }*/
-
-        for (int i = 0; i < (int)data.size(); i++) {
-            pixel[i + start] = data[i];
-        }
-
+    void notifyCount(int add){
         countMut.lock();
-        count += (int) data.size();
+        count += add;
         countMut.unlock();
-
         // cout << "- data: " << count << " of " << pixel.size() << "  pos: " << start << "\n";
         if (count == pixel.size()) {
             // cout << "- data full" << endl;
@@ -124,6 +106,14 @@ public:
 
 };
 
+struct RenderChunk {
+    int frame;
+    RenderBuffer* rb;
+    State start;
+    double scale;
+    vector<Ray *> *rays;
+};
+
 struct ThreadContext {
     int width;
     int height;
@@ -135,7 +125,7 @@ struct ThreadContext {
 
     condition_variable newDataCond;
     mutex newDataCondMutex;
-    deque<RenderBuffer> renderBuffers;
+    deque<RenderBuffer*> renderBuffers;
 
     ThreadContext(int width, int height, const GeoGraph graph) : width(width), height(height),
                                                                  graph(graph) {
