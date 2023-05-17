@@ -170,13 +170,14 @@ Renderer::Renderer(int w, int h, GeoGraph graph, RenderingTarget &target) : w(w)
             auto t1 = chrono::high_resolution_clock::now();
 
             // cout << "rt: starting batch" << endl;
+            int countAdd = 0;
             for (auto ray: rays) {
                 State state = startState;
                 state.dir = ray->direction;
                 float lastDist = 0;
                 float nextHit = -1;
 
-                int countAdd = 0;
+                countAdd += 3 * (int)ray->renderPoints.size();
                 double trueScaleInverse = 100 / (chunk.scale * threadContext.width);
                 for (auto &[dist, index]: ray->renderPoints) {
                     // traversing graph until the next point is hit
@@ -193,12 +194,10 @@ Renderer::Renderer(int w, int h, GeoGraph graph, RenderingTarget &target) : w(w)
                     chunk.rb->pixel[3*index  ] = u8(127 + 120 * threadContext.graph.triangles[state.tri].normal3d.x);
                     chunk.rb->pixel[3*index+1] = u8(127 + 120 * threadContext.graph.triangles[state.tri].normal3d.y);
                     chunk.rb->pixel[3*index+2] = u8(127 + 120 * threadContext.graph.triangles[state.tri].normal3d.z);
-                    countAdd += 3;
                     lastDist = dist;
                 }
-                chunk.rb->notifyCount(countAdd);
-
             }
+            chunk.rb->notifyCount(countAdd);
             // cout << "rt: finished batch" << endl;
             auto t2 = chrono::high_resolution_clock::now();
             // cout << "t: " << chrono::duration_cast<chrono::milliseconds>(t2 - t1).count() << "ms" << endl;
