@@ -38,31 +38,33 @@ int main(int argc, char **argv) {
     outPath+= to_string((int)configParser.scale) + "/";
     outPath+= to_string(time.count() / 100000000) + "/";
 
-    FileOut renderingTarget(outPath, configParser.outFileName + ".png");
-    Renderer renderer(configParser.width, configParser.height, graph, renderingTarget);
+    // FileOut fileRenderTarget(outPath, configParser.outFileName + ".png");
+    ScreenOut screen;
+    Renderer renderer(configParser.width, configParser.height, graph, screen);
 
     State state;
     state.tri = 0;
     state.pos = graph.triangles[state.tri].getMid();
 
-    FileOut logFile(outPath, configParser.outFileName + ".log");
+    /*FileOut logFile(outPath, configParser.outFileName + ".log");
     logFile.threadSave = true;
     logFile.debugLevel =  DebugLevel::IMPORTANT; // disabeling most debugs (otherwise there will be ~1.500 lines per frame)
+    */
 
     ConsoleOut consoleOut = ConsoleOut();
-    consoleOut.threadSave = true;
+    consoleOut.threadSave = false; // way faster
     consoleOut.debugToStderr = true;
-    consoleOut.disableDebug = false;
+    consoleOut.disableDebug = true;
     consoleOut.debugLevel = DebugLevel::IMPORTANT; // disabeling most debugs (otherwise there will be ~1.500 lines per frame)
 
 
     vector<LoggingTarget *> loggingTargets = vector<LoggingTarget *>();
 
     // comment out for disabling writing to file:
-    renderer.addLoggingTarget(&logFile);
+    // renderer.addLoggingTarget(&logFile);
     renderer.addLoggingTarget(&consoleOut);
 
-    for (int i=0;i<10;i++)
+    for (int i=0;i<100;i++)
         renderer.render(state, configParser.scale);
     renderer.mainThread.join();
 

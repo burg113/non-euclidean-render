@@ -2,13 +2,11 @@
 // Created by Burg on 13.05.2023.
 //
 #include <fstream>
-#include <time.h>
 #include <thread>
 #include <queue>
 #include "Renderer.h"
 #include "../../lib/stb_image_write.h"
 
-#define Tdebug threadcontext.debug
 
 Renderer::Renderer(int w, int h, GeoGraph graph, RenderingTarget &target) : w(w), h(h), threadContext(w, h, graph),
                                                                             renderingTarget(target) {
@@ -177,7 +175,6 @@ Renderer::Renderer(int w, int h, GeoGraph graph, RenderingTarget &target) : w(w)
 
         while (true) {
             auto t1 = chrono::high_resolution_clock::now();
-
             threadContext.debug("# waiting for a new frame", 1);
             while (threadContext.renderBuffers.empty())
                 int a = 0;
@@ -195,7 +192,7 @@ Renderer::Renderer(int w, int h, GeoGraph graph, RenderingTarget &target) : w(w)
             threadContext.renderBuffers.pop_front();
             auto t2 = chrono::high_resolution_clock::now();
             threadContext.log(
-                    "# frame took: " + to_string(chrono::duration_cast<chrono::milliseconds>(t2 - t1).count()) + "ms");
+                    "# frame took: " + to_string(chrono::duration_cast<chrono::microseconds>(t2 - t1).count()/1000) + "ms");
         }
     };
     mainThread = thread(outThread, ref(renderingTarget), ref(threadContext));

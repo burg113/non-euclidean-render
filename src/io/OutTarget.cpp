@@ -131,3 +131,7 @@ void ConsoleOut::debugNewLine(string &data, int level) {
 
     if (setMut) consoleAccessMut.unlock();
 }
+
+void ScreenOut::writeOut(std::pair<int, int> resolution, vector<unsigned char> &data) {
+    // todo: implement
+}
