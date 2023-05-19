@@ -9,11 +9,15 @@
 #include <string>
 
 struct LoggingTarget {
-    virtual void writeOut(std::vector<std::string> &data) = 0;
-
-    virtual void writeOutNewLine(std::string &data) = 0;
 
     virtual void writeOut(std::string &data) = 0;
+    virtual void writeOutNewLine(std::string &data) = 0;
+
+    virtual void debug(std::string &data) = 0;
+    virtual void debug(std::string &data, int level) = 0;
+
+    virtual void debugNewLine(std::string &data) = 0;
+    virtual void debugNewLine(std::string &data, int level) = 0;
 };
 
 #endif //NON_EUCLIDEAN_RENDER_LOGGINGTARGET_H

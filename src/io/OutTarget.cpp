@@ -42,26 +42,84 @@ void FileOut::writeOutNewLine(std::string &str) {
     file.close();
 }
 
-void FileOut::writeOut(vector<std::string> &data) {
-    filesystem::create_directories(path);
-    ofstream file;
-    file.open(path + name, ios_base::app);
-    for (const string &str: data) {
-        file << str << "\n";
+void FileOut::debug(string &data) {
+    debug(data,0);
+}
+
+void FileOut::debugNewLine(string &data) {
+    debugNewLine(data,0);
+}
+
+void FileOut::debugNewLine(string &data, int level) {
+    if (!disableDebug&& level <= debugLevel) writeOutNewLine(data);
+}
+
+void FileOut::debug(string &data, int level) {
+    if (!disableDebug&& level <= debugLevel) writeOut(data);
+}
+
+
+void ConsoleOut::writeOut(string &data) {
+    bool setMut = threadSave;
+    if (setMut) consoleAccessMut.lock();
+
+    cout << data;
+    if (autoFlush) cout.flush();
+
+    if (setMut) consoleAccessMut.unlock();
+}
+
+void ConsoleOut::writeOutNewLine(std::string &data) {
+    bool setMut = threadSave;
+    if (setMut) consoleAccessMut.lock();
+
+    cout << data << "\n";
+    if (autoFlush) cout.flush();
+
+    if (setMut) consoleAccessMut.unlock();
+}
+
+void ConsoleOut::debug(string &data) {
+    debug(data, 0);
+}
+
+void ConsoleOut::debugNewLine(string &data) {
+    debugNewLine(data, 0);
+}
+
+void ConsoleOut::debug(string &data, int level) {
+    bool setMut = threadSave;
+    if (setMut) consoleAccessMut.lock();
+
+    if (!disableDebug && level <= debugLevel) {
+        if (debugToStderr) {
+            cerr << data;
+            if (autoFlush) cerr.flush();
+        }
+        if (debugToStderr) {
+            cout << data;
+            if (autoFlush) cout.flush();
+        }
     }
-    file.close();
+
+    if (setMut) consoleAccessMut.unlock();
 }
 
+void ConsoleOut::debugNewLine(string &data, int level) {
+    bool setMut = threadSave;
+    if (setMut) consoleAccessMut.lock();
 
-void ConsoleOut::writeOut(vector<string> &data) {
-    for (const auto &str: data)
-        cout << str << "\n";
-}
+    if (!disableDebug && level <= debugLevel) {
+        if (debugToStderr) {
+            cerr << data << "\n";
+            if (autoFlush) cerr.flush();
+        }
+        if (debugToStderr) {
+            cout << data << "\n";
+            if (autoFlush) cout.flush();
+        }
 
-void ConsoleOut::writeOut(string &str) {
-    cout << str;
-}
+    }
 
-void ConsoleOut::writeOutNewLine(std::string &str) {
-    cout << str << "\n";
+    if (setMut) consoleAccessMut.unlock();
 }
