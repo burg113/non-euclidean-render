@@ -13,51 +13,12 @@
 #include <queue>
 #include <condition_variable>
 
-#include "OBJ_parser.h"
+#include "../io/OBJ_parser.h"
 #include "GeoGraph.h"
+#include "../io/OutTarget.h"
 
 typedef unsigned char u8;
 
-struct RenderingTarget {
-    virtual void writeOut(pair<int, int> resolution, vector<u8> &data) = 0;
-};
-
-struct LoggingTarget {
-    virtual void writeOut(vector<string> &data) = 0;
-
-    virtual void writeOutNewLine(string &data) = 0;
-
-    virtual void writeOut(string &data) = 0;
-};
-
-struct FileOut : RenderingTarget, LoggingTarget {
-    string path;
-    string name;
-
-    FileOut(const string path, const string name) : path(path), name(name) {
-        // todo: comment in
-        //filesystem::create_directories(path);
-        //ofstream file;
-        //file.open(path + name);
-        //file.close();
-    }
-
-    void writeOut(pair<int, int> resolution, vector<u8> &data) override;
-
-    void writeOut(vector<string> &data) override;
-
-    void writeOut(string &data) override;
-
-    void writeOutNewLine(string &data) override;
-};
-
-struct ConsoleOut : LoggingTarget {
-    void writeOut(vector<string> &data) override;
-
-    void writeOut(string &data) override;
-
-    void writeOutNewLine(string &data) override;
-};
 
 struct Ray {
     Vec2d direction;
@@ -99,12 +60,8 @@ public:
         countMut.unlock();
     }
 
-    vector<u8> getData() {
-        return pixel;
-    }
-
     void waitFull() {
-        unique_lock<mutex> lock (fullMut,defer_lock_t());
+        unique_lock<mutex> lock(fullMut, defer_lock_t());
         lock.lock();
         if (!full)
             fullCond.wait(lock);

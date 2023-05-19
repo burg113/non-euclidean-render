@@ -3,7 +3,7 @@
 #include <tuple>
 #include <map>
 
-#include "MathUtil.h"
+#include "../util/MathUtil.h"
 #include "GeoGraph.h"
 
 using namespace std;

@@ -2,7 +2,8 @@
 // Created by Burg on 11.05.2023.
 //
 #include <iostream>
-#include "../lib/toml.hpp"
+#include "../../lib/toml.hpp"
+#include "ConfigParser.h"
 
 using namespace std;
 template <typename T>
@@ -21,7 +22,6 @@ T readFromTable(toml::table &table, vector<string> path, T stdReturn, string err
 }
 
 
-#include "ConfigParser.h"
 
 void ConfigParser::loadConfig(string tryFirst) {
     while (true) {

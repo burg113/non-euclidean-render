@@ -7,7 +7,7 @@
 #include <iostream>
 #include <filesystem>
 #include <regex>
-#include "MathUtil.h"
+#include "../util/MathUtil.h"
 
 struct OBJ_parser {
     std::vector<Vec3d> vertices;

@@ -1,10 +1,10 @@
 #include <iostream>
 #include "lib/toml.hpp"
-#include "src/ConfigParser.h"
-#include "src/OBJ_parser.h"
-#include "src/GeoGraph.h"
+#include "src/io/ConfigParser.h"
+#include "src/io/OBJ_parser.h"
+#include "src/renderer/GeoGraph.h"
 #include "lib/stb_image_write.h"
-#include "src/Renderer.h"
+#include "src/renderer/Renderer.h"
 
 typedef unsigned char u8;
 
@@ -55,9 +55,9 @@ int main(int argc, char **argv) {
     ConsoleOut consoleOut = ConsoleOut();
     vector<LoggingTarget *> loggingTargets = vector<LoggingTarget *>();
 
-    // todo: comment in
-    //loggingTargets.push_back(&logFile);
-    //loggingTargets.push_back(&consoleOut);
+    // comment out for disabling writing to file:
+    loggingTargets.push_back(&logFile);
+    loggingTargets.push_back(&consoleOut);
 
     for (int i=0;i<10;i++)
         renderer.renderDebug(state, configParser.scale, loggingTargets, debugInfo);

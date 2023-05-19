@@ -1,6 +1,6 @@
 #pragma once
 
-#include "MathUtil.h"
+#include "../util/MathUtil.h"
 
 struct State{
     int tri;

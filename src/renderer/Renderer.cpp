@@ -6,54 +6,8 @@
 #include <thread>
 #include <queue>
 #include "Renderer.h"
-#include "../lib/stb_image_write.h"
+#include "../../lib/stb_image_write.h"
 
-void FileOut::writeOut(pair<int, int> resolution, vector<u8> &data) {
-    // cout << "writing to " << path << endl;
-    filesystem::create_directories(path);
-    stbi_write_png((path + name).c_str(), resolution.first, resolution.second, 3, data.data(), 0);
-}
-
-void FileOut::writeOut(std::string &str) {
-    filesystem::create_directories(path);
-    ofstream file;
-    file.open(path + name, ios_base::app);
-    file << str;
-    file.close();
-}
-
-
-void FileOut::writeOutNewLine(std::string &str) {
-    filesystem::create_directories(path);
-    ofstream file;
-    file.open(path + name, ios_base::app);
-    file << str << "\n";
-    file.close();
-}
-
-void FileOut::writeOut(vector<std::string> &data) {
-    filesystem::create_directories(path);
-    ofstream file;
-    file.open(path + name, ios_base::app);
-    for (string str: data) {
-        file << str << "\n";
-    }
-    file.close();
-}
-
-
-void ConsoleOut::writeOut(vector<string> &data) {
-    for (auto str: data)
-        cout << str << "\n";
-}
-
-void ConsoleOut::writeOut(string &str) {
-    cout << str;
-}
-
-void ConsoleOut::writeOutNewLine(std::string &str) {
-    cout << str << "\n";
-}
 
 Renderer::Renderer(int w, int h, GeoGraph graph, RenderingTarget &target) : w(w), h(h), threadContext(w, h, graph),
                                                                             renderingTarget(target) {
@@ -227,9 +181,9 @@ Renderer::Renderer(int w, int h, GeoGraph graph, RenderingTarget &target) : w(w)
             threadContext.renderBuffers.front()->waitFull();
             //cout << "# got full frame" << endl;
             RenderBuffer *rb = threadContext.renderBuffers.front();
-            vector<u8> data = rb->getData();
-            // todo: comment in
-            //target.writeOut(pair<int, int>(threadContext.width, threadContext.height), data);
+            vector<u8> data = rb->pixel;
+            // comment out for disabling writing to file:
+            target.writeOut(pair<int, int>(threadContext.width, threadContext.height), data);
 
             //cout << "# rendered full frame" << endl;
             delete rb;
@@ -243,6 +197,7 @@ Renderer::Renderer(int w, int h, GeoGraph graph, RenderingTarget &target) : w(w)
 
 void Renderer::renderDebug(State start, double scale, const vector<LoggingTarget *> &loggingTargets,
                            map<string, string> info) {
+
     vector<string> debugInfo;
     auto currentTime = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
 
