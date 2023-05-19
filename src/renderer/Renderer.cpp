@@ -8,6 +8,7 @@
 #include "Renderer.h"
 #include "../../lib/stb_image_write.h"
 
+#define Tdebug threadcontext.debug
 
 Renderer::Renderer(int w, int h, GeoGraph graph, RenderingTarget &target) : w(w), h(h), threadContext(w, h, graph),
                                                                             renderingTarget(target) {
@@ -93,43 +94,44 @@ Renderer::Renderer(int w, int h, GeoGraph graph, RenderingTarget &target) : w(w)
     splitChunks(left);
 
     auto renderThread = [](ThreadContext &threadContext) {
-        cout << "rt: awake" << endl;
+        threadContext.debug("rt: awake");
         while (true) {
 
-            // cout << "rt: fetching data" << endl;
+            threadContext.debug("rt: fetching data", 100);
             threadContext.renderQueueMutex.lock();
-            // cout << "rt: locked render queue" << endl;
+            threadContext.debug("rt: locked render queue", 100);
 
             while (threadContext.renderQueue.empty()) {
                 threadContext.renderQueueMutex.unlock();
-                // cout << "rt: unlocked render queue" << endl;
-                //cout << "rt: trying to lock newDataCondMutex" << endl;
-                unique_lock<mutex> ul(threadContext.newDataCondMutex,defer_lock_t());
+                threadContext.debug("rt: unlocked render queue", 100);
+                threadContext.debug("rt: trying to lock newDataCondMutex", 100);
+                unique_lock<mutex> ul(threadContext.newDataCondMutex, defer_lock_t());
                 ul.lock();
-                cout << "rt: waiting" << endl;
-                threadContext.newDataCond.wait(ul,[&](){
+                threadContext.debug("rt: waiting", 1);
+                threadContext.newDataCond.wait(ul, [&]() {
                     threadContext.renderQueueMutex.lock();
                     bool b = threadContext.renderQueue.empty();
                     threadContext.renderQueueMutex.unlock();
                     return !b;
                 });
                 ul.unlock();
-                // cout << "rt: received new data" << endl;
+                threadContext.debug("rt: received new data", 1);
                 threadContext.renderQueueMutex.lock();
             }
 
             RenderChunk chunk = threadContext.renderQueue.front();
             threadContext.renderQueue.pop();
             threadContext.renderQueueMutex.unlock();
-            // cout << "rt: unlocked" << endl;
-            // cout << "rt: got chunk " << chunk.scale << endl;
+            threadContext.debug("rt: unlocked", 100);
+            threadContext.debug("rt: got chunk " + to_string(int(chunk.scale))
+                                + "." + to_string(int(chunk.scale * 10) % 10), 100);
+            threadContext.debug("rt: rendering frame:  " + to_string(chunk.frame), 100);
 
-            int frame = chunk.frame;
             State startState = chunk.start;
             vector<Ray *> &rays = *chunk.rays;
             auto t1 = chrono::high_resolution_clock::now();
 
-            // cout << "rt: starting batch" << endl;
+            threadContext.debug("rt: starting batch", 100);
             int countAdd = 0;
             for (auto ray: rays) {
                 State state = startState;
@@ -137,7 +139,7 @@ Renderer::Renderer(int w, int h, GeoGraph graph, RenderingTarget &target) : w(w)
                 float lastDist = 0;
                 float nextHit = -1;
 
-                countAdd += 3 * (int)ray->renderPoints.size();
+                countAdd += 3 * (int) ray->renderPoints.size();
                 double trueScaleInverse = 100 / (chunk.scale * threadContext.width);
                 for (auto &[dist, index]: ray->renderPoints) {
                     // traversing graph until the next point is hit
@@ -149,23 +151,25 @@ Renderer::Renderer(int w, int h, GeoGraph graph, RenderingTarget &target) : w(w)
                         tie(state, nextHit) = threadContext.graph.traverse(state, rayDist);
                     }
 
-                    // writing out data todo: possible problems with poping by main render thread at same time???
-                    // no mutex needed as no two threads should render the same part of the image
-                    chunk.rb->pixel[3*index  ] = u8(127 + 120 * threadContext.graph.triangles[state.tri].normal3d.x);
-                    chunk.rb->pixel[3*index+1] = u8(127 + 120 * threadContext.graph.triangles[state.tri].normal3d.y);
-                    chunk.rb->pixel[3*index+2] = u8(127 + 120 * threadContext.graph.triangles[state.tri].normal3d.z);
+                    // writing out data - no mutex needed as no two threads should render the same part of the image
+                    chunk.rb->pixel[3 * index] = u8(127 + 120 * threadContext.graph.triangles[state.tri].normal3d.x);
+                    chunk.rb->pixel[3 * index + 1] = u8(
+                            127 + 120 * threadContext.graph.triangles[state.tri].normal3d.y);
+                    chunk.rb->pixel[3 * index + 2] = u8(
+                            127 + 120 * threadContext.graph.triangles[state.tri].normal3d.z);
                     lastDist = dist;
                 }
             }
             chunk.rb->notifyCount(countAdd);
-            // cout << "rt: finished batch" << endl;
+            threadContext.debug("rt: finished batch", 100);
             auto t2 = chrono::high_resolution_clock::now();
-            // cout << "t: " << chrono::duration_cast<chrono::milliseconds>(t2 - t1).count() << "ms" << endl;
+            threadContext.debug(
+                    "rt: took:" + to_string(chrono::duration_cast<chrono::milliseconds>(t2 - t1).count()) + "ms", 100);
         }
 
     };
 
-    renderThreads = vector<thread>(10);
+    renderThreads = vector<thread>(100);
     for (int i = 0; i < renderThreadAmount; i++)
         renderThreads.emplace_back(renderThread, ref(threadContext));
 
@@ -174,92 +178,53 @@ Renderer::Renderer(int w, int h, GeoGraph graph, RenderingTarget &target) : w(w)
         while (true) {
             auto t1 = chrono::high_resolution_clock::now();
 
-            //cout << "# waiting for a new frame" << endl;
+            threadContext.debug("# waiting for a new frame", 1);
             while (threadContext.renderBuffers.empty())
                 int a = 0;
-            //cout << "# waiting for frame to finish rendering..." << endl;
+            threadContext.debug("# waiting for frame to finish rendering...", 1);
             threadContext.renderBuffers.front()->waitFull();
-            //cout << "# got full frame" << endl;
+            threadContext.debug("# got full frame", 1);
             RenderBuffer *rb = threadContext.renderBuffers.front();
             vector<u8> data = rb->pixel;
             // comment out for disabling writing to file:
             target.writeOut(pair<int, int>(threadContext.width, threadContext.height), data);
 
-            //cout << "# rendered full frame" << endl;
+            threadContext.debug("# rendered full frame", 1);
+
             delete rb;
             threadContext.renderBuffers.pop_front();
             auto t2 = chrono::high_resolution_clock::now();
-            cout << "# frame took: " << chrono::duration_cast<chrono::milliseconds>(t2 - t1).count() << "ms" << endl;
+            threadContext.log(
+                    "# frame took: " + to_string(chrono::duration_cast<chrono::milliseconds>(t2 - t1).count()) + "ms");
         }
     };
     mainThread = thread(outThread, ref(renderingTarget), ref(threadContext));
 }
 
-void Renderer::renderDebug(State start, double scale, const vector<LoggingTarget *> &loggingTargets,
-                           map<string, string> info) {
-
-    vector<string> debugInfo;
-    auto currentTime = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
-
-    auto log = [&](string str) {
-        for (LoggingTarget *target: loggingTargets)
-            (*target).writeOutNewLine(str);
-    };
-
-    log("This is a log from " + string(ctime(&currentTime)));
-    log("resolution        : " + to_string(w) + " x " + to_string(h));
-    log("");
-    log("mesh              : " + info["mesh"]);
-    log("triangles (mesh)  : " + info["triangles"]);
-    log("vertices (mesh)   : " + info["vertices"]);
-    log("triangles (graph) : " + to_string(threadContext.graph.triangles.size()));
-    log("");
-    log("scale             : " + to_string(int(scale)) + "." + to_string(int(scale * 10) % 10));
-    for (const string &str: debugInfo)
-        cout << str << endl;
-
-    auto t1 = chrono::high_resolution_clock::now();
-    ConsoleOut out = ConsoleOut();
-    render(start, scale, {&out});
-    auto t2 = chrono::high_resolution_clock::now();
-
-    long long renderTimeMs = chrono::duration_cast<chrono::milliseconds>(t2 - t1).count();
-
-    log("rendering took    : " + to_string(renderTimeMs) + "ms");
-    log("pixel per second  : " + to_string((long long) w * h * 1000 / renderTimeMs));
-}
-
-void Renderer::render(State startState, double scale, const vector<LoggingTarget *> &loggingTargets) {
-    auto log = [&](string str) {
-        for (LoggingTarget *target: loggingTargets)
-            (*target).writeOut(str);
-    };
-
+void Renderer::render(State startState, double scale) {
     vector<u8> data(w * h * 3);
 
-    cout << "m initializing render: " << endl;
-    cout << "m adding new renderBuffer..." << endl;
-    RenderBuffer* renderBuffer = new RenderBuffer(frameCount, threadContext.width * threadContext.height * 3);
+    threadContext.debug("m initializing render");
+    threadContext.debug("m adding new renderBuffer...", 1);
+    RenderBuffer *renderBuffer = new RenderBuffer(frameCount, threadContext.width * threadContext.height * 3);
     threadContext.renderBuffers.push_back(renderBuffer);
-    cout << "m finished" << endl;
 
-    cout << "locking mutex..." << endl;
+    threadContext.debug("m locking mutex...", 5);
     threadContext.renderQueueMutex.lock();
-    cout << "m finished" << endl;
+    threadContext.debug("m finished", 5);
     for (vector<Ray *> &rays: chunks) {
-        RenderChunk chunk;
-        chunk.frame = frameCount;
-        chunk.rb = renderBuffer;
-        chunk.start = startState;
-        chunk.scale = scale;
-        chunk.rays = &rays;
+        RenderChunk chunk(frameCount, renderBuffer, startState, scale, &rays);
         threadContext.renderQueue.push(chunk);
     }
-    cout << "m added chunks" << endl;
+    threadContext.debug("m added chunks", 5);
     threadContext.renderQueueMutex.unlock();
-    cout << "m unlocked mutex" << endl;
+    threadContext.debug("m unlocked mutex", 5);
     frameCount++;
     threadContext.newDataCond.notify_all();
-    cout << "m notified all" << endl;
+    threadContext.debug("m notified all", 5);
+}
+
+void Renderer::addLoggingTarget(LoggingTarget *target) {
+    threadContext.loggingTargets.push_back(target);
 }
 

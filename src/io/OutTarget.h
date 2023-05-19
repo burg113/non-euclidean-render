@@ -13,6 +13,14 @@
 
 typedef unsigned char u8;
 
+// suggestions for debug levels
+enum DebugLevel {
+    DEFAULT = 0,
+    IMPORTANT = 10,
+    MOST = 100,
+    ALL = INT_MAX
+};
+
 struct FileOut : RenderingTarget, LoggingTarget {
     std::string path;
     std::string name;
@@ -20,6 +28,7 @@ struct FileOut : RenderingTarget, LoggingTarget {
     // only relevant if used as logging target
     bool disableDebug = false;      // disables all debugs
     int debugLevel = INT_MAX;       // only debugs on this level or lower will be executed
+    bool threadSave;
 
     FileOut(const std::string &path, const std::string &name);
 
@@ -37,13 +46,12 @@ struct FileOut : RenderingTarget, LoggingTarget {
     void debugNewLine(std::string &data) override;
 
     void debugNewLine(std::string &data, int level) override;
+
+private:
+    std::mutex consoleAccessMut;
 };
 
 struct ConsoleOut : LoggingTarget {
-private:
-    std::mutex consoleAccessMut;
-
-public:
     bool autoFlush = true;          // automatically flushes console after message
     bool disableDebug = false;      // disables all debugs
     bool debugToStderr = false;     // will debug to cerr if enabled
@@ -55,7 +63,6 @@ public:
 
     void writeOutNewLine(std::string &data) override;
 
-
     // debugs on level 0
     void debug(std::string &data) override;
 
@@ -66,6 +73,9 @@ public:
 
     void debugNewLine(std::string &data, int level) override;
 
+
+private:
+    std::mutex consoleAccessMut;
 };
 
 struct ScreenOut : RenderingTarget {

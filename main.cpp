@@ -26,7 +26,7 @@ int main(int argc, char **argv) {
     ConfigParser configParser;
     configParser.loadConfig(fileDir);
 
-    cout << "starting to parse obj... " << endl;
+    cout << "parsing obj... ";
     OBJ_parser objParser;
     objParser.loadFromFile(configParser.meshPath);
     cout << "finished " << endl;
@@ -45,23 +45,25 @@ int main(int argc, char **argv) {
     state.tri = 0;
     state.pos = graph.triangles[state.tri].getMid();
 
-    map<string, string> debugInfo;
-
-    debugInfo["mesh"] = getFileName(configParser.meshPath);
-    debugInfo["triangles"] = to_string(objParser.triangleVertices.size());
-    debugInfo["vertices"] = to_string(objParser.vertices.size());
-
     FileOut logFile(outPath, configParser.outFileName + ".log");
+    logFile.threadSave = true;
+    logFile.debugLevel =  DebugLevel::IMPORTANT; // disabeling most debugs (otherwise there will be ~1.500 lines per frame)
+
     ConsoleOut consoleOut = ConsoleOut();
+    consoleOut.threadSave = true;
+    consoleOut.debugToStderr = true;
+    consoleOut.disableDebug = false;
+    consoleOut.debugLevel = DebugLevel::IMPORTANT; // disabeling most debugs (otherwise there will be ~1.500 lines per frame)
+
+
     vector<LoggingTarget *> loggingTargets = vector<LoggingTarget *>();
 
     // comment out for disabling writing to file:
-    loggingTargets.push_back(&logFile);
-    loggingTargets.push_back(&consoleOut);
+    renderer.addLoggingTarget(&logFile);
+    renderer.addLoggingTarget(&consoleOut);
 
     for (int i=0;i<10;i++)
-        renderer.renderDebug(state, configParser.scale, loggingTargets, debugInfo);
-    //renderer.render(state,configParser.scale);
+        renderer.render(state, configParser.scale);
     renderer.mainThread.join();
 
     cout << "\n" << "done!";

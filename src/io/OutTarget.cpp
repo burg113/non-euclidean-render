@@ -27,19 +27,29 @@ void FileOut::writeOut(pair<int, int> resolution, vector<u8> &data) {
 }
 
 void FileOut::writeOut(std::string &str) {
+    bool setMut = threadSave;
+    if (setMut) consoleAccessMut.lock();
+
     filesystem::create_directories(path);
     ofstream file;
     file.open(path + name, ios_base::app);
     file << str;
     file.close();
+
+    if (setMut) consoleAccessMut.unlock();
 }
 
 void FileOut::writeOutNewLine(std::string &str) {
+    bool setMut = threadSave;
+    if (setMut) consoleAccessMut.lock();
+
     filesystem::create_directories(path);
     ofstream file;
     file.open(path + name, ios_base::app);
     file << str << "\n";
     file.close();
+
+    if (setMut) consoleAccessMut.unlock();
 }
 
 void FileOut::debug(string &data) {
@@ -95,8 +105,7 @@ void ConsoleOut::debug(string &data, int level) {
         if (debugToStderr) {
             cerr << data;
             if (autoFlush) cerr.flush();
-        }
-        if (debugToStderr) {
+        } else {
             cout << data;
             if (autoFlush) cout.flush();
         }
@@ -113,8 +122,7 @@ void ConsoleOut::debugNewLine(string &data, int level) {
         if (debugToStderr) {
             cerr << data << "\n";
             if (autoFlush) cerr.flush();
-        }
-        if (debugToStderr) {
+        }else {
             cout << data << "\n";
             if (autoFlush) cout.flush();
         }

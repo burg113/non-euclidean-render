@@ -44,18 +44,11 @@ public:
     }
 
     void notifyCount(int add) {
-        //cout << "notify:" << endl;
         countMut.lock();
-        //cout << "locked" << endl;
         count += add;
-        //cout << "unlocked" << endl;
-        // cout << "- data: " << count << " of " << pixel.size() << "  pos: " << start << "\n";
         if (count == pixel.size()) {
-            //cout << "wtf are we doing?" << endl;
-            // cout << "- data full" << endl;
             fullCond.notify_all();
             full = true;
-            //cout << "survived wtf are we doing?" << endl;
         }
         countMut.unlock();
     }
@@ -76,6 +69,10 @@ struct RenderChunk {
     State start;
     double scale;
     vector<Ray *> *rays;
+
+    RenderChunk(int frame, RenderBuffer *rb, const State &start, double scale, vector<Ray *> *rays): frame(
+            frame), rb(rb), start(start), scale(scale), rays(rays) {};
+
 };
 
 struct ThreadContext {
@@ -91,11 +88,26 @@ struct ThreadContext {
     mutex newDataCondMutex;
     deque<RenderBuffer *> renderBuffers;
 
-    ThreadContext(int width, int height, const GeoGraph graph) : width(width), height(height),
-                                                                 graph(graph) {
+    vector<LoggingTarget *> loggingTargets;
 
-
+    void log(string str) {
+        for (LoggingTarget *target: loggingTargets)
+            target->writeOutNewLine(str);
     };
+
+    void debug(string str) {
+        for (LoggingTarget *target: loggingTargets)
+            target->debugNewLine(str);
+    };
+
+    void debug(string str, int level) {
+        for (LoggingTarget *target: loggingTargets)
+            target->debugNewLine(str, level);
+    };
+
+
+    ThreadContext(int width, int height, const GeoGraph graph) : width(width), height(height),
+                                                                 graph(graph) {};
 
 };
 
@@ -119,10 +131,9 @@ struct Renderer {
 
     Renderer(int w, int h, GeoGraph graph, RenderingTarget &target);
 
-    void
-    renderDebug(State start, double scale, const vector<LoggingTarget *> &loggingTargets, map<string, string> info);
+    void render(State startState, double scale);
 
-    void render(State startState, double scale, const vector<LoggingTarget *> &dataAccesMutex = {});
+    void addLoggingTarget(LoggingTarget *target);
 };
 
 
