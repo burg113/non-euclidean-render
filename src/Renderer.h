@@ -68,30 +68,35 @@ struct RenderBuffer {
 private:
     vector<bool> pixelSet;
     int count = 0;
+    mutex countMut;
+
     bool full = false;
     mutex fullMut;
-    mutex countMut;
+    condition_variable fullCond;
 
 public:
     vector<u8> pixel;
-    condition_variable condVar;
     const int frame;
 
     RenderBuffer(const int frame, int size) : frame(frame) {
-
-        pixel = vector<u8>(size,48);
-        fullMut.lock();
+        pixel = vector<u8>(size, 48);
     }
 
-    void notifyCount(int add){
+    void notifyCount(int add) {
+        //cout << "notify:" << endl;
         countMut.lock();
+        //cout << "locked" << endl;
         count += add;
-        countMut.unlock();
+        //cout << "unlocked" << endl;
         // cout << "- data: " << count << " of " << pixel.size() << "  pos: " << start << "\n";
         if (count == pixel.size()) {
+            //cout << "wtf are we doing?" << endl;
             // cout << "- data full" << endl;
-            fullMut.unlock();
+            fullCond.notify_all();
+            full = true;
+            //cout << "survived wtf are we doing?" << endl;
         }
+        countMut.unlock();
     }
 
     vector<u8> getData() {
@@ -99,16 +104,18 @@ public:
     }
 
     void waitFull() {
-        fullMut.lock();
-        // cout << "### is full" << endl;
-        fullMut.unlock();
+        unique_lock<mutex> lock (fullMut,defer_lock_t());
+        lock.lock();
+        if (!full)
+            fullCond.wait(lock);
+        lock.unlock();
     }
 
 };
 
 struct RenderChunk {
     int frame;
-    RenderBuffer* rb;
+    RenderBuffer *rb;
     State start;
     double scale;
     vector<Ray *> *rays;
@@ -125,7 +132,7 @@ struct ThreadContext {
 
     condition_variable newDataCond;
     mutex newDataCondMutex;
-    deque<RenderBuffer*> renderBuffers;
+    deque<RenderBuffer *> renderBuffers;
 
     ThreadContext(int width, int height, const GeoGraph graph) : width(width), height(height),
                                                                  graph(graph) {
