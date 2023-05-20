@@ -166,11 +166,13 @@ Renderer::Renderer(int w, int h, GeoGraph graph, RenderingTarget &target) :
                 threadContext.debug("rt: waiting", 1);
                 threadContext.newDataCond.wait(ul, [&]() {
                     threadContext.renderQueueMutex.lock();
-                    bool b = threadContext.renderQueue.empty();
+                    bool b = !threadContext.renderQueue.empty() || threadContext.close;
                     threadContext.renderQueueMutex.unlock();
-                    return !b;
+                    return b;
                 });
                 ul.unlock();
+                if (threadContext.close)
+                    return;
                 threadContext.debug("rt: received new data", 1);
                 threadContext.renderQueueMutex.lock();
             }
@@ -240,11 +242,13 @@ Renderer::Renderer(int w, int h, GeoGraph graph, RenderingTarget &target) :
                 threadContext.debug("# waiting", 1);
                 threadContext.newDataCond.wait(ul, [&]() {
                     threadContext.renderQueueMutex.lock();
-                    bool b = threadContext.renderQueue.empty();
+                    bool b = !threadContext.renderQueue.empty() || threadContext.close;
                     threadContext.renderQueueMutex.unlock();
-                    return !b;
+                    return b;
                 });
                 ul.unlock();
+                if (threadContext.close)
+                    return;
             }
             threadContext.debug("# waiting for frame to finish rendering...", 1);
             threadContext.renderBuffers.front()->waitFull();
@@ -307,6 +311,7 @@ void Renderer::close(bool wait) {
     threadContext.debug("closing");
     threadContext.close = true;
     if (wait) {
+        threadContext.newDataCond.notify_all();
         threadContext.debug("waiting for end of execution");
         for (thread &t : renderThreads) {
             if (t.joinable()) {
