@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.18)
+cmake_minimum_required(VERSION 3.20)
 project(non_euclidean_render)
 
 set(CMAKE_CXX_STANDARD 17)
@@ -30,3 +30,7 @@ include_directories(
         lib/single_header/
         lib/glm-0.9.9.8/
 )
+
+find_package(SDL2 REQUIRED)
+include_directories(${SDL2_INCLUDE_DIRS})
+target_link_libraries(non_euclidean_render ${SDL2_LIBRARIES})

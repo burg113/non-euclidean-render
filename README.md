@@ -9,12 +9,10 @@ For now it is more of an abstract art generator :
 ![not available](https://github.com/burg113/non-euclidean-render/blob/master/results/donut_high_res.png)
 
 
-
-
-
-
-
-
-
-
-
+## Building
+This project needs SDL2 as a dependency. [GitHub](https://github.com/libsdl-org/SDL/releases/tag/release-2.26.5). (Use a package manager on Linux.)
+If you are on Windows, you need to tell CMAKE where to find the package. Put this into CMakeLists.txt
+```
+list(APPEND CMAKE_PREFIX_PATH path/to/library/folder) # or use ${CMAKE_CURRENT_SOURCE_DIR} for relative path
+```
+After using CMAKE to configure the project, the location will be cached, so you can delete the line again.
