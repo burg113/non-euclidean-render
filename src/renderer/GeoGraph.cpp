@@ -4,17 +4,19 @@
 #include <map>
 
 #include "../util/MathUtil.h"
+#include "glm/gtx/norm.hpp"
 #include "GeoGraph.h"
 
 using namespace std;
+using glm::mat2, glm::vec2, glm::vec3, glm::normalize, glm::dot, glm::cross, glm::length, glm::length2;
 
-pair<float, short> Triangle::rayIntersect(Vec2d pos, Vec2d dir){
+pair<float, short> Triangle::rayIntersect(vec2 pos, vec2 dir){
     int side = -1;
     float minDist = 1e8;
     for(int i = 0; i < 3; i++){
         float dist = lineIntersect(pos, dir, vert[i], vert[(i+1)%3]-vert[i]).first;
-        Vec2d normal = (vert[i]-vert[(i+1)%3]).perp().normalized();
-        if(normal.dot(dir) > 0 && dist < minDist){
+        vec2 normal = normalize(perp(vert[i]-vert[(i+1)%3]));
+        if(dot(normal, dir) > 0 && dist < minDist){
             if(dist < 0){
                 dist = 0;
 //                throw invalid_argument("Ray-cast started outside of triangle?");
@@ -29,40 +31,40 @@ pair<float, short> Triangle::rayIntersect(Vec2d pos, Vec2d dir){
     return {minDist, side};
 }
 
-Vec2d Triangle::getMid() {
+vec2 Triangle::getMid() {
 //    return ((vert[0] + vert[1]) * 0.5 + vert[2]) * 0.5;
-    return (vert[0] + vert[1] + vert[2]) * (1.0f/3);
+    return (vert[0] + vert[1] + vert[2]) / 3.0f;
 }
 
-void Triangle::from3d(Vec3d a, Vec3d b, Vec3d c, Vec2d uvA, Vec2d uvB, Vec2d uvC) {
-    Vec3d aToB = b - a;
-    Vec3d aToC = c - a;
-    Vec3d right = aToB.normalized();
-    this->normal3d = right.cross(aToC.normalized()).normalized();
-    Vec3d up = normal3d.cross(right).normalized();
-    this->vert[0] = Vec2d(0, 0);
-    this->vert[1] = Vec2d(aToB.len(), 0);
-    this->vert[2] = Vec2d(right.dot(aToC), up.dot(aToC));
-    Vec2d uvAtoB = uvB-uvA;
-    Vec2d uvAtoC = uvC-uvA;
+void Triangle::from3d(vec3 a, vec3 b, vec3 c, vec2 uvA, vec2 uvB, vec2 uvC) {
+    vec3 aToB = b - a;
+    vec3 aToC = c - a;
+    vec3 right = normalize(aToB);
+    this->normal3d = normalize(cross(right, normalize(aToC)));
+    vec3 up = normalize(cross(normal3d, right));
+    this->vert[0] = vec2(0, 0);
+    this->vert[1] = vec2(length(aToB), 0);
+    this->vert[2] = vec2(dot(right, aToC), dot(up, aToC));
+    vec2 uvAtoB = uvB-uvA;
+    vec2 uvAtoC = uvC-uvA;
     this->uv0 = uvA;
     this->uvRight = uvAtoB / vert[1].x;
-    this->uvUp = (uvAtoC - uvAtoB * uvAtoC.dot(uvAtoB) / uvAtoB.lenSq()) / vert[2].y;
+    this->uvUp = (uvAtoC - uvAtoB * dot(uvAtoC, uvAtoB) / length2(uvAtoB)) / vert[2].y;
 }
 
-Vec2d Triangle::getUV(Vec2d pos) const {
+vec2 Triangle::getUV(vec2 pos) const {
     return uv0 + uvRight * pos.x + uvUp * pos.y;
 }
 
 ostream& operator<<(ostream &stream, Triangle triangle){
     stream << "===============================\n";
     stream << "A: " << triangle.vert[0] << "  B: " << triangle.vert[1] << "  C: " << triangle.vert[2] << "\n";
-    stream << "AB = " << (triangle.vert[1]-triangle.vert[0]).len() << "  BC = " <<
-    (triangle.vert[2]-triangle.vert[1]).len() << "  CA = " << (triangle.vert[0]-triangle.vert[2]).len() << "\n";
+    stream << "AB = " << length(triangle.vert[1]-triangle.vert[0]) << "  BC = " <<
+    length(triangle.vert[2]-triangle.vert[1]) << "  CA = " << length(triangle.vert[0]-triangle.vert[2]) << "\n";
     return stream;
 }
 
-GeoGraph::GeoGraph(vector<Vec3d> vertices, vector<tuple<int, int, int>> triangleVerts, vector<Vec2d> uv, vector<tuple<int, int, int>> triangleUV) {
+GeoGraph::GeoGraph(vector<vec3> vertices, vector<tuple<int, int, int>> triangleVerts, vector<vec2> uv, vector<tuple<int, int, int>> triangleUV) {
     int n = (int)triangleVerts.size();
     triangles.resize(n);
 
@@ -109,13 +111,13 @@ GeoGraph::GeoGraph(vector<Vec3d> vertices, vector<tuple<int, int, int>> triangle
                 nextSide -= 3;
                 negate = true;
             }
-            Vec2d myA = triangle.vert[(side+1)%3], myB = triangle.vert[side];
-            Vec2d toA = nextTri.vert[(nextSide+1)%3], toB = nextTri.vert[nextSide];
+            vec2 myA = triangle.vert[(side+1)%3], myB = triangle.vert[side];
+            vec2 toA = nextTri.vert[(nextSide+1)%3], toB = nextTri.vert[nextSide];
             if(negate) swap(toA, toB);
-            Vec2d my = (myA - myB).normalized();
-            Vec2d myPerp = my.perp();
-            Vec2d to = (toA - toB).normalized();
-            Mat2d mat = Mat2d{to, to.perp()} * Mat2d{Vec2d(my.x, myPerp.x), Vec2d(my.y, myPerp.y)};
+            vec2 my = normalize(myA - myB);
+            vec2 myPerp = perp(my);
+            vec2 to = normalize(toA - toB);
+            mat2 mat = mat2(to, perp(to)) * mat2(my.x, myPerp.x, my.y, myPerp.y);
 
             triangle.rotationMatrix[side] = mat;
             triangle.nextVert[side][0] = toB;
@@ -139,8 +141,8 @@ pair<State, float> GeoGraph::traverse(State state, float dist){
         state.pos = state.pos + state.dir*untilHit;
         state.tri = myTri.nextTriangle[side];
         state.dir = myTri.rotationMatrix[side] * state.dir;
-        float sidePosition = (myTri.vert[(side+1)%3] - myTri.vert[side]).normalized().dot(state.pos - myTri.vert[side]);
-        state.pos = myTri.nextVert[side][0] + (myTri.nextVert[side][1] - myTri.nextVert[side][0]).normalized() * sidePosition;
+        float sidePosition = dot(normalize(myTri.vert[(side+1)%3] - myTri.vert[side]), state.pos - myTri.vert[side]);
+        state.pos = myTri.nextVert[side][0] + normalize(myTri.nextVert[side][1] - myTri.nextVert[side][0]) * sidePosition;
     }
 }
 

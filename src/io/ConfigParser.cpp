@@ -2,7 +2,7 @@
 // Created by Burg on 11.05.2023.
 //
 #include <iostream>
-#include "../../lib/toml.hpp"
+#include "toml.hpp"
 #include "ConfigParser.h"
 
 using namespace std;

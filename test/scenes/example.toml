@@ -6,7 +6,7 @@ file = "../models/sphere_ico_32.obj" # relative to this file
 [render]
 width = 1920
 height = 1080
-scale = 40
+scale = 20
 
 [output]
 path = "../../test/out/" # relative to this file

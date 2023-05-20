@@ -5,7 +5,7 @@ set(CMAKE_CXX_STANDARD 17)
 
 add_executable(non_euclidean_render
         main.cpp
-        lib/stbi_impl.cpp
+        lib/single_header/implementation.cpp
 
         src/renderer/GeoGraph.h
         src/renderer/GeoGraph.cpp
@@ -25,3 +25,8 @@ add_executable(non_euclidean_render
         src/util/MathUtil.cpp
         src/util/MathUtil.h
         )
+
+include_directories(
+        lib/single_header/
+        lib/glm-0.9.9.8/
+)

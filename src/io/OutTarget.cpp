@@ -7,7 +7,7 @@
 #include <utility>
 #include <filesystem>
 #include <iostream>
-#include "../../lib/stb_image_write.h"
+#include "stb_image_write.h"
 
 using namespace std;
 

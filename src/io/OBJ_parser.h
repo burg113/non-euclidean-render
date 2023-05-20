@@ -10,9 +10,9 @@
 #include "../util/MathUtil.h"
 
 struct OBJ_parser {
-    std::vector<Vec3d> vertices;
-    std::vector<Vec3d> normals;
-    std::vector<Vec2d> uv;
+    std::vector<glm::vec3> vertices;
+    std::vector<glm::vec3> normals;
+    std::vector<glm::vec2> uv;
 
     std::vector<std::tuple<int,int,int>> triangleVertices;
     std::vector<std::tuple<int,int,int>> triangleNormals;

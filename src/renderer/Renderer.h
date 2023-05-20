@@ -11,6 +11,7 @@
 #include <mutex>
 #include <thread>
 #include <queue>
+#include <vector>
 #include <condition_variable>
 
 #include "../io/OBJ_parser.h"
@@ -21,26 +22,26 @@ typedef unsigned char u8;
 
 
 struct Ray {
-    Vec2d direction;
-    vector<pair<float, int>> renderPoints;
+    glm::vec2 direction;
+    std::vector<std::pair<float, int>> renderPoints;
 };
 
 struct RenderBuffer {
 private:
-    vector<bool> pixelSet;
+    std::vector<bool> pixelSet;
     int count = 0;
-    mutex countMut;
+    std::mutex countMut;
 
     bool full = false;
-    mutex fullMut;
-    condition_variable fullCond;
+    std::mutex fullMut;
+    std::condition_variable fullCond;
 
 public:
-    vector<u8> pixel;
+    std::vector<u8> pixel;
     const int frame;
 
     RenderBuffer(const int frame, int size) : frame(frame) {
-        pixel = vector<u8>(size, 48);
+        pixel = std::vector<u8>(size, 48);
     }
 
     void notifyCount(int add) {
@@ -54,7 +55,7 @@ public:
     }
 
     void waitFull() {
-        unique_lock<mutex> lock(fullMut, defer_lock_t());
+        std::unique_lock<std::mutex> lock(fullMut, std::defer_lock_t());
         lock.lock();
         if (!full)
             fullCond.wait(lock);
@@ -68,9 +69,9 @@ struct RenderChunk {
     RenderBuffer *rb;
     State start;
     double scale;
-    vector<Ray *> *rays;
+    std::vector<Ray *> *rays;
 
-    RenderChunk(int frame, RenderBuffer *rb, const State &start, double scale, vector<Ray *> *rays): frame(
+    RenderChunk(int frame, RenderBuffer *rb, const State &start, double scale, std::vector<Ray *> *rays): frame(
             frame), rb(rb), start(start), scale(scale), rays(rays) {};
 
 };
@@ -81,26 +82,26 @@ struct ThreadContext {
 
     GeoGraph graph;
 
-    mutex renderQueueMutex;
-    queue<RenderChunk> renderQueue;
+    std::mutex renderQueueMutex;
+    std::queue<RenderChunk> renderQueue;
 
-    condition_variable newDataCond;
-    mutex newDataCondMutex;
-    deque<RenderBuffer *> renderBuffers;
+    std::condition_variable newDataCond;
+    std::mutex newDataCondMutex;
+    std::deque<RenderBuffer *> renderBuffers;
 
-    vector<LoggingTarget *> loggingTargets;
+    std::vector<LoggingTarget *> loggingTargets;
 
-    void log(string str) {
+    void log(std::string str) {
         for (LoggingTarget *target: loggingTargets)
             target->writeOutNewLine(str);
     };
 
-    void debug(string str) {
+    void debug(std::string str) {
         for (LoggingTarget *target: loggingTargets)
             target->debugNewLine(str);
     };
 
-    void debug(string str, int level) {
+    void debug(std::string str, int level) {
         for (LoggingTarget *target: loggingTargets)
             target->debugNewLine(str, level);
     };
@@ -117,15 +118,15 @@ struct Renderer {
     int frameCount = 0;
     int w, h;
     RenderingTarget &renderingTarget;
-    vector<Ray> top;
-    vector<Ray> bottom;
-    vector<Ray> left;
-    vector<Ray> right;
+    std::vector<Ray> top;
+    std::vector<Ray> bottom;
+    std::vector<Ray> left;
+    std::vector<Ray> right;
 
-    vector<vector<Ray *>> chunks;
+    std::vector<std::vector<Ray *>> chunks;
 
-    thread mainThread;
-    vector<thread> renderThreads;
+    std::thread mainThread;
+    std::vector<std::thread> renderThreads;
 
     ThreadContext threadContext;
 

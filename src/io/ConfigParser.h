@@ -2,6 +2,7 @@
 // Created by Burg on 11.05.2023.
 //
 #include <iostream>
+#include "toml.hpp"
 
 #ifndef NON_EUCLIDEAN_RENDER_TOMLPARSER_H
 #define NON_EUCLIDEAN_RENDER_TOMLPARSER_H

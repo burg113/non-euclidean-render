@@ -1,9 +1,7 @@
 #include <iostream>
-#include "lib/toml.hpp"
 #include "src/io/ConfigParser.h"
 #include "src/io/OBJ_parser.h"
 #include "src/renderer/GeoGraph.h"
-#include "lib/stb_image_write.h"
 #include "src/renderer/Renderer.h"
 
 typedef unsigned char u8;

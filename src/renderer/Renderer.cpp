@@ -5,7 +5,9 @@
 #include <thread>
 #include <queue>
 #include "Renderer.h"
-#include "../../lib/stb_image_write.h"
+
+using namespace std;
+using glm::vec2, glm::normalize, glm::length;
 
 
 Renderer::Renderer(int w, int h, GeoGraph graph, RenderingTarget &target) : w(w), h(h), threadContext(w, h, graph),
@@ -16,12 +18,12 @@ Renderer::Renderer(int w, int h, GeoGraph graph, RenderingTarget &target) : w(w)
     right = vector<Ray>(h - 2);
 
     for (int i = 0; i < w; i++) {
-        top[i].direction = Vec2d((i + 0.5) - w / 2.0, -h / 2.0).normalized();
-        bottom[i].direction = Vec2d(w / 2.0 - (i + 0.5), h / 2.0).normalized();
+        top[i].direction = normalize(vec2((i + 0.5) - w / 2.0, -h / 2.0));
+        bottom[i].direction = normalize(vec2(w / 2.0 - (i + 0.5), h / 2.0));
     }
     for (int i = 0; i < h - 2; i++) {
-        right[i].direction = Vec2d(w / 2.0, (h - 1) / 2.0 - (i + 0.5)).normalized();
-        left[i].direction = Vec2d(-w / 2.0, (i + 0.5) - (h - 1) / 2.0).normalized();
+        right[i].direction = normalize(vec2(w / 2.0, (h - 1) / 2.0 - (i + 0.5)));
+        left[i].direction = normalize(vec2(-w / 2.0, (i + 0.5) - (h - 1) / 2.0));
     }
 
     // assuming w, h even
@@ -34,25 +36,25 @@ Renderer::Renderer(int w, int h, GeoGraph graph, RenderingTarget &target) : w(w)
             if ((y + 0.5) * w >= h * abs(x + 0.5)) {
                 // x * h/y = i
                 top[clamp(w / 2 + (x * h + h / 2) / (y * 2 + 1), 0, w - 1)].renderPoints.emplace_back(
-                        Vec2d(x + 0.5, y + 0.5).len(), iy * w + ix);
+                        length(vec2(x + 0.5, y + 0.5)), iy * w + ix);
             }
                 // upper triangle (y+0.5)/abs(x+0.5) < - h / w
             else if ((y + 0.5) * w <= -h * abs(x + 0.5)) {
                 bottom[clamp(w / 2 + (x * h + h / 2) / (y * 2 + 1), 0, w - 1)].renderPoints.emplace_back(
-                        Vec2d(x + 0.5, y + 0.5).len(), iy * w + ix);
+                        length(vec2(x + 0.5, y + 0.5)), iy * w + ix);
             }
                 // right triangle (x+0.5)/(abs(y+0.5)) > w/h
             else if ((x + 0.5) * h >= w * abs(y + 0.5)) {
                 // y * w /x
 
                 right[clamp(h / 2 + (y * w + w / 2) / (x * 2 + 1), 0, h - 3)].renderPoints.emplace_back(
-                        Vec2d(x + 0.5, y + 0.5).len(),
+                        length(vec2(x + 0.5, y + 0.5)),
                         iy * w + ix);
             }
                 // left triangle (x+0.5)/(abs(y+0.5)) < -w/h
             else {
                 left[clamp(h / 2 + (y * w + w / 2) / (x * 2 + 1), 0, h - 3)].renderPoints.emplace_back(
-                        Vec2d(x + 0.5, y + 0.5).len(),
+                        length(vec2(x + 0.5, y + 0.5)),
                         iy * w + ix);
             }
         }
