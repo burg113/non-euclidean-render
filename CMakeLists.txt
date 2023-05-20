@@ -24,7 +24,9 @@ add_executable(non_euclidean_render
 
         src/util/MathUtil.cpp
         src/util/MathUtil.h
-        src/io/KeyboardAdapter.cpp src/io/KeyboardAdapter.h)
+        src/io/KeyboardAdapter.cpp src/io/KeyboardAdapter.h
+        src/racing_game/RacingGame.cpp src/racing_game/RacingGame.h
+        )
 
 include_directories(
         lib/single_header/

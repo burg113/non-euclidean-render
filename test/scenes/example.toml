@@ -1,7 +1,7 @@
 # this is an example scene file
 [mesh]
 # file = "../models/cube.obj"
-file = "../models/sphere_ico_32.obj" # relative to this file
+file = "../models/sphere_ico_64.obj" # relative to this file
 
 [render]
 width = 1920

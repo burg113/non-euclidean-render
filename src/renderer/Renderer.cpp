@@ -287,7 +287,9 @@ void Renderer::render(State startState, double scale) {
         return;
     }
 
-    vector<u8> data(w * h * 3);
+    if (threadContext.renderBuffers.size()>1) {
+        return;
+    }
 
     threadContext.debug("m initializing render");
     threadContext.debug("m adding new renderBuffer...", 1);

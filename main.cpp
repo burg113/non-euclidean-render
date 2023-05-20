@@ -2,8 +2,8 @@
 #include "src/io/ConfigParser.h"
 #include "src/io/OBJ_parser.h"
 #include "src/renderer/GeoGraph.h"
-#include "src/renderer/Renderer.h"
-#include "src/io/KeyboardAdapter.h"
+#include "src/racing_game/RacingGame.h"
+
 
 #include <SDL.h>
 
@@ -34,25 +34,22 @@ int main(int argc, char **argv) {
 
     GeoGraph graph(objParser.vertices, objParser.triangleVertices, objParser.uv, objParser.triangleUV);
 
+    /*
     auto time = chrono::high_resolution_clock::now().time_since_epoch();
     string outPath = configParser.outPath + getFileName(configParser.meshPath) + "/";
     outPath+= to_string((int)configParser.scale) + "/";
     outPath+= to_string(time.count() / 100000000) + "/";
+     */
 
     // FileOut fileRenderTarget(outPath, configParser.outFileName + ".png");
     ScreenOut screen(configParser.width, configParser.height, "Non euclidean renderer");
     Renderer renderer(configParser.width, configParser.height, graph, screen);
 
-    State state;
-    state.tri = 0;
-    state.pos = graph.triangles[state.tri].getMid();
-
-    state.dir = glm::vec2(1,0);
 
     /*FileOut logFile(outPath, configParser.outFileName + ".log");
     logFile.threadSave = true;
     logFile.debugLevel =  DebugLevel::IMPORTANT; // disabeling most debugs (otherwise there will be ~1.500 lines per frame)
-    */
+
 
     ConsoleOut consoleOut = ConsoleOut();
     consoleOut.threadSave = false; // way faster
@@ -61,24 +58,13 @@ int main(int argc, char **argv) {
     consoleOut.debugLevel = DebugLevel::IMPORTANT; // disabeling most debugs (otherwise there will be ~1.500 lines per frame)
 
 
-    vector<LoggingTarget *> loggingTargets = vector<LoggingTarget *>();
-
     // comment out for disabling writing to file:
     // renderer.addLoggingTarget(&logFile);
     renderer.addLoggingTarget(&consoleOut);
-    KeyboardAdapter keyboardAdapter;
-    float angle = 0;
-    while(!keyboardAdapter.quit) {
-        if (keyboardAdapter.isDown(SDL_Scancode::SDL_SCANCODE_SPACE))
-            angle += 0.1;
+    */
 
-        std::this_thread::sleep_for(std::chrono::milliseconds(50));
-        state.dir = {cos(angle),sin(angle)};
-        renderer.render(state, configParser.scale);
-    }
-
-    //renderer.mainThread.join();
-    renderer.close(true);
+    RacingGame racingGame(renderer, graph);
+    racingGame.run();
 
     cout << "\n" << "done!";
     return 0;

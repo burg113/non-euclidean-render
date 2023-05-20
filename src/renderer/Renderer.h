@@ -1,11 +1,7 @@
 //
 // Created by Burg on 13.05.2023.
 //
-
-#ifndef NON_EUCLIDEAN_RENDER_RENDERER_H
-#define NON_EUCLIDEAN_RENDER_RENDERER_H
-
-#endif //NON_EUCLIDEAN_RENDER_RENDERER_H
+#pragma once
 
 #include <utility>
 #include <mutex>
