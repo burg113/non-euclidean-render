@@ -4,14 +4,59 @@
 #include <fstream>
 #include <thread>
 #include <queue>
+#include <utility>
 #include "Renderer.h"
 
 using namespace std;
 using glm::vec2, glm::normalize, glm::length;
 
+void ThreadContext::log(std::string str) {
+    for (LoggingTarget *target: loggingTargets)
+        target->writeOutNewLine(str);
+};
 
-Renderer::Renderer(int w, int h, GeoGraph graph, RenderingTarget &target) : w(w), h(h), threadContext(w, h, graph),
-                                                                            renderingTarget(target) {
+void ThreadContext::debug(std::string str) {
+    for (LoggingTarget *target: loggingTargets)
+        target->debugNewLine(str);
+};
+
+void ThreadContext::debug(std::string str, int level) {
+    for (LoggingTarget *target: loggingTargets)
+        target->debugNewLine(str, level);
+};
+
+ThreadContext::ThreadContext(int width, int height, GeoGraph graph) : width(width), height(height),
+                                                                      graph(std::move(graph)) {};
+
+RenderChunk::RenderChunk(int frame, RenderBuffer *rb, const State &start, double scale, std::vector<Ray *> *rays)
+        : frame(frame), rb(rb), start(start), scale(scale), rays(rays) {};
+
+
+RenderBuffer::RenderBuffer(int frame, int size) : frame(frame) {
+    pixel = std::vector<u8>(size, 48);
+}
+
+void RenderBuffer::notifyCount(int add) {
+    countMut.lock();
+    count += add;
+    if (count == pixel.size()) {
+        fullCond.notify_all();
+        full = true;
+    }
+    countMut.unlock();
+}
+
+void RenderBuffer::waitFull() {
+    std::unique_lock<std::mutex> lock(fullMut, std::defer_lock_t());
+    lock.lock();
+    if (!full)
+        fullCond.wait(lock);
+    lock.unlock();
+}
+
+
+Renderer::Renderer(int w, int h, GeoGraph graph, RenderingTarget &target) :
+        w(w), h(h), threadContext(w, h, graph), renderingTarget(target) {
     top = vector<Ray>(w);
     bottom = vector<Ray>(w);
     left = vector<Ray>(h - 2);
@@ -193,8 +238,8 @@ Renderer::Renderer(int w, int h, GeoGraph graph, RenderingTarget &target) : w(w)
             delete rb;
             threadContext.renderBuffers.pop_front();
             auto t2 = chrono::high_resolution_clock::now();
-            threadContext.log(
-                    "# frame took: " + to_string(chrono::duration_cast<chrono::microseconds>(t2 - t1).count()/1000) + "ms");
+            threadContext.log("# frame took: " + to_string(
+                    chrono::duration_cast<chrono::microseconds>(t2 - t1).count() / 1000) + "ms");
         }
     };
     mainThread = thread(outThread, ref(renderingTarget), ref(threadContext));
@@ -226,4 +271,6 @@ void Renderer::render(State startState, double scale) {
 void Renderer::addLoggingTarget(LoggingTarget *target) {
     threadContext.loggingTargets.push_back(target);
 }
+
+
 

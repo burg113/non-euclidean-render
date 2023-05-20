@@ -20,7 +20,6 @@
 
 typedef unsigned char u8;
 
-
 struct Ray {
     glm::vec2 direction;
     std::vector<std::pair<float, int>> renderPoints;
@@ -40,27 +39,11 @@ public:
     std::vector<u8> pixel;
     const int frame;
 
-    RenderBuffer(const int frame, int size) : frame(frame) {
-        pixel = std::vector<u8>(size, 48);
-    }
+    RenderBuffer(int frame, int size);
 
-    void notifyCount(int add) {
-        countMut.lock();
-        count += add;
-        if (count == pixel.size()) {
-            fullCond.notify_all();
-            full = true;
-        }
-        countMut.unlock();
-    }
+    void notifyCount(int add);
 
-    void waitFull() {
-        std::unique_lock<std::mutex> lock(fullMut, std::defer_lock_t());
-        lock.lock();
-        if (!full)
-            fullCond.wait(lock);
-        lock.unlock();
-    }
+    void waitFull();
 
 };
 
@@ -71,8 +54,7 @@ struct RenderChunk {
     double scale;
     std::vector<Ray *> *rays;
 
-    RenderChunk(int frame, RenderBuffer *rb, const State &start, double scale, std::vector<Ray *> *rays): frame(
-            frame), rb(rb), start(start), scale(scale), rays(rays) {};
+    RenderChunk(int frame, RenderBuffer *rb, const State &start, double scale, std::vector<Ray *> *rays);
 
 };
 
@@ -91,32 +73,23 @@ struct ThreadContext {
 
     std::vector<LoggingTarget *> loggingTargets;
 
-    void log(std::string str) {
-        for (LoggingTarget *target: loggingTargets)
-            target->writeOutNewLine(str);
-    };
+    void log(std::string str);
 
-    void debug(std::string str) {
-        for (LoggingTarget *target: loggingTargets)
-            target->debugNewLine(str);
-    };
+    void debug(std::string str);
 
-    void debug(std::string str, int level) {
-        for (LoggingTarget *target: loggingTargets)
-            target->debugNewLine(str, level);
-    };
+    void debug(std::string str, int level);
 
-
-    ThreadContext(int width, int height, const GeoGraph graph) : width(width), height(height),
-                                                                 graph(graph) {};
+    ThreadContext(int width, int height, GeoGraph graph);
 
 };
 
 struct Renderer {
     const static int pixelPerChunk = 10000;
     const static int renderThreadAmount = 10;
+
     int frameCount = 0;
     int w, h;
+
     RenderingTarget &renderingTarget;
     std::vector<Ray> top;
     std::vector<Ray> bottom;
@@ -136,6 +109,4 @@ struct Renderer {
 
     void addLoggingTarget(LoggingTarget *target);
 };
-
-
 
