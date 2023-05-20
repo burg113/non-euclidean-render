@@ -14,9 +14,9 @@ struct Triangle{
     glm::vec2 vert[3];
 
     // index i means side from i to i+1
-    int nextTriangle[3];
+    int nextTriangle[3] = {-1,-1,-1};
     // add 3 if other direction (i+1 -> i)
-    int nextSide[3];
+    int nextSide[3] = {-1,-1,-1};
     // when we leave the triangle at side i, apply the rotationMatrix to the direction
     // to obtain the corresponding direction in the new triangle
     glm::mat2 rotationMatrix[3];

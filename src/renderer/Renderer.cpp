@@ -210,12 +210,20 @@ Renderer::Renderer(int w, int h, GeoGraph graph, RenderingTarget &target) :
                         tie(state, nextHit) = threadContext.graph.traverse(state, rayDist);
                     }
 
-                    // writing out data - no mutex needed as no two threads should render the same part of the image
-                    chunk.rb->pixel[3 * index] = u8(127 + 120 * threadContext.graph.triangles[state.tri].normal3d.x);
-                    chunk.rb->pixel[3 * index + 1] = u8(
-                            127 + 120 * threadContext.graph.triangles[state.tri].normal3d.y);
-                    chunk.rb->pixel[3 * index + 2] = u8(
-                            127 + 120 * threadContext.graph.triangles[state.tri].normal3d.z);
+                    if (state.tri == -1) {
+                        // if the renderer got outside the mesh black is drawn
+                        chunk.rb->pixel[3 * index] = u8(1);
+                        chunk.rb->pixel[3 * index + 1] = u8(1);
+                        chunk.rb->pixel[3 * index + 2] = u8(1);
+                    }else {
+                        // writing out data - no mutex needed as no two threads should render the same part of the image
+                        chunk.rb->pixel[3 * index] = u8(
+                                127 + 120 * threadContext.graph.triangles[state.tri].normal3d.x);
+                        chunk.rb->pixel[3 * index + 1] = u8(
+                                127 + 120 * threadContext.graph.triangles[state.tri].normal3d.y);
+                        chunk.rb->pixel[3 * index + 2] = u8(
+                                127 + 120 * threadContext.graph.triangles[state.tri].normal3d.z);
+                    }
                     lastDist = dist;
                 }
             }

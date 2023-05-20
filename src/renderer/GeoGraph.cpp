@@ -104,7 +104,11 @@ GeoGraph::GeoGraph(vector<vec3> vertices, vector<tuple<int, int, int>> triangleV
     // precompute transition data
     for(Triangle &triangle : triangles){
         for(int side = 0; side < 3; side++){
+            if (triangle.nextTriangle[side] == -1) {
+                continue;
+            }
             Triangle nextTri = triangles[triangle.nextTriangle[side]];
+
             int nextSide = triangle.nextSide[side];
             bool negate = false;
             if(nextSide >= 3){
@@ -126,7 +130,10 @@ GeoGraph::GeoGraph(vector<vec3> vertices, vector<tuple<int, int, int>> triangleV
     }
 }
 
+// returns state with tri = -1 if end of mesh was reached
 pair<State, float> GeoGraph::traverse(State state, float dist){
+    if (state.tri == -1)
+        return {state, 0};
     while(true){
         if (dist == 0)
             return {state, 0};
@@ -139,7 +146,13 @@ pair<State, float> GeoGraph::traverse(State state, float dist){
         }
         dist -= untilHit;
         state.pos = state.pos + state.dir*untilHit;
+
         state.tri = myTri.nextTriangle[side];
+        // hitting boarder of mesh
+        if (state.tri == -1) {
+            return {state, 0};
+        }
+
         state.dir = myTri.rotationMatrix[side] * state.dir;
         float sidePosition = dot(normalize(myTri.vert[(side+1)%3] - myTri.vert[side]), state.pos - myTri.vert[side]);
         state.pos = myTri.nextVert[side][0] + normalize(myTri.nextVert[side][1] - myTri.nextVert[side][0]) * sidePosition;
