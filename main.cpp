@@ -68,7 +68,7 @@ int main(int argc, char **argv) {
     renderer.addLoggingTarget(&consoleOut);
     KeyboardAdapter keyboardAdapter;
     float angle = 0;
-    while(true) {
+    while(!keyboardAdapter.quit) {
         if (keyboardAdapter.isDown(SDL_Scancode::SDL_SCANCODE_SPACE))
             angle += 0.1;
 

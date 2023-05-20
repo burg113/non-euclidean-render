@@ -13,6 +13,7 @@
 struct KeyboardAdapter {
 
     std::vector<bool> keys;
+    bool quit = false;
 
     KeyboardAdapter();
 

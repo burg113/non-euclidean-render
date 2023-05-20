@@ -17,6 +17,8 @@ void KeyboardAdapter::update() {
             keys[event.key.keysym.scancode] = true;
         if(event.type == SDL_KEYUP)
             keys[event.key.keysym.scancode] = false;
+        if(event.type == SDL_QUIT)
+            quit = true;
     }
 
 
