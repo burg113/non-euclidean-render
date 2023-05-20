@@ -213,17 +213,19 @@ Renderer::Renderer(int w, int h, GeoGraph graph, RenderingTarget &target) :
                     }
                     if (state.tri == -1) {
                         // if the renderer got outside the mesh black is drawn
-                        chunk.rb->pixel[3 * index] = u8(0);
-                        chunk.rb->pixel[3 * index + 1] = u8(0);
-                        chunk.rb->pixel[3 * index + 2] = u8(3);
+                        chunk.rb->pixel[4 * index] = u8(0);
+                        chunk.rb->pixel[4 * index + 1] = u8(0);
+                        chunk.rb->pixel[4 * index + 2] = u8(0);
+                        chunk.rb->pixel[4 * index + 3] = u8(255);
                     }else {
                         // writing out data - no mutex needed as no two threads should render the same part of the image
-                        chunk.rb->pixel[3 * index] = u8(
+                        chunk.rb->pixel[4 * index] = u8(
                                 127 + 120 * threadContext.graph.triangles[state.tri].normal3d.x);
-                        chunk.rb->pixel[3 * index + 1] = u8(
+                        chunk.rb->pixel[4 * index + 1] = u8(
                                 127 + 120 * threadContext.graph.triangles[state.tri].normal3d.y);
-                        chunk.rb->pixel[3 * index + 2] = u8(
+                        chunk.rb->pixel[4 * index + 2] = u8(
                                 127 + 120 * threadContext.graph.triangles[state.tri].normal3d.z);
+                        chunk.rb->pixel[4 * index + 3] = u8(255);
                     }
                     lastDist = dist;
                 }
@@ -289,7 +291,7 @@ void Renderer::render(State startState, double scale) {
 
     threadContext.debug("m initializing render");
     threadContext.debug("m adding new renderBuffer...", 1);
-    RenderBuffer *renderBuffer = new RenderBuffer(frameCount, threadContext.width * threadContext.height * 3);
+    RenderBuffer *renderBuffer = new RenderBuffer(frameCount, threadContext.width * threadContext.height * 4);
     threadContext.renderBuffers.push_back(renderBuffer);
 
     threadContext.debug("m locking mutex...", 5);
