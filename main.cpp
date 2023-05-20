@@ -36,13 +36,15 @@ int main(int argc, char **argv) {
     outPath+= to_string((int)configParser.scale) + "/";
     outPath+= to_string(time.count() / 100000000) + "/";
 
-    // FileOut fileRenderTarget(outPath, configParser.outFileName + ".png");
-    ScreenOut screen;
-    Renderer renderer(configParser.width, configParser.height, graph, screen);
+    FileOut fileRenderTarget(outPath, configParser.outFileName + ".png");
+    // ScreenOut screen;
+    Renderer renderer(configParser.width, configParser.height, graph, fileRenderTarget);
 
     State state;
     state.tri = 0;
     state.pos = graph.triangles[state.tri].getMid();
+
+    state.dir = glm::vec2(1,0);
 
     /*FileOut logFile(outPath, configParser.outFileName + ".log");
     logFile.threadSave = true;
@@ -62,9 +64,11 @@ int main(int argc, char **argv) {
     // renderer.addLoggingTarget(&logFile);
     renderer.addLoggingTarget(&consoleOut);
 
-    for (int i=0;i<100;i++)
+    for (int i=0;i<10;i++)
         renderer.render(state, configParser.scale);
-    renderer.mainThread.join();
+
+    //renderer.mainThread.join();
+    renderer.close(true);
 
     cout << "\n" << "done!";
     return 0;

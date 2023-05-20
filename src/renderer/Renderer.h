@@ -53,14 +53,16 @@ struct RenderChunk {
     State start;
     double scale;
     std::vector<Ray *> *rays;
+    glm::mat2 rotationMatrix;
 
-    RenderChunk(int frame, RenderBuffer *rb, const State &start, double scale, std::vector<Ray *> *rays);
+    RenderChunk(int frame, RenderBuffer *rb, const State &start, double scale, std::vector<Ray *> *rays,glm::mat2 rotationMatrix);
 
 };
 
 struct ThreadContext {
     int width;
     int height;
+    bool close = false;
 
     GeoGraph graph;
 
@@ -108,5 +110,7 @@ struct Renderer {
     void render(State startState, double scale);
 
     void addLoggingTarget(LoggingTarget *target);
+
+    void close(bool wait = true);
 };
 

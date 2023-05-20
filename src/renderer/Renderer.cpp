@@ -6,8 +6,10 @@
 #include <queue>
 #include <utility>
 #include "Renderer.h"
+#include "glm/matrix.hpp"
 
 using namespace std;
+using glm::mat2;
 using glm::vec2, glm::normalize, glm::length;
 
 void ThreadContext::log(std::string str) {
@@ -28,8 +30,9 @@ void ThreadContext::debug(std::string str, int level) {
 ThreadContext::ThreadContext(int width, int height, GeoGraph graph) : width(width), height(height),
                                                                       graph(std::move(graph)) {};
 
-RenderChunk::RenderChunk(int frame, RenderBuffer *rb, const State &start, double scale, std::vector<Ray *> *rays)
-        : frame(frame), rb(rb), start(start), scale(scale), rays(rays) {};
+RenderChunk::RenderChunk(int frame, RenderBuffer *rb, const State &start, double scale, std::vector<Ray *> *rays,
+                         mat2 rotationMatrix)
+        : frame(frame), rb(rb), start(start), scale(scale), rays(rays), rotationMatrix(rotationMatrix) {};
 
 
 RenderBuffer::RenderBuffer(int frame, int size) : frame(frame) {
@@ -140,7 +143,15 @@ Renderer::Renderer(int w, int h, GeoGraph graph, RenderingTarget &target) :
 
     auto renderThread = [](ThreadContext &threadContext) {
         threadContext.debug("rt: awake");
-        while (true) {
+
+        auto requestEmpty = [&] {
+            threadContext.renderQueueMutex.lock();
+            bool awns = threadContext.renderQueue.empty();
+            threadContext.renderQueueMutex.unlock();
+            return awns;
+        };
+
+        while (!threadContext.close ||  !requestEmpty()) {
 
             threadContext.debug("rt: fetching data", 100);
             threadContext.renderQueueMutex.lock();
@@ -174,13 +185,14 @@ Renderer::Renderer(int w, int h, GeoGraph graph, RenderingTarget &target) :
 
             State startState = chunk.start;
             vector<Ray *> &rays = *chunk.rays;
+            mat2 rotationMatrix = chunk.rotationMatrix;
             auto t1 = chrono::high_resolution_clock::now();
 
             threadContext.debug("rt: starting batch", 100);
             int countAdd = 0;
             for (auto ray: rays) {
                 State state = startState;
-                state.dir = ray->direction;
+                state.dir = rotationMatrix * ray->direction;
                 float lastDist = 0;
                 float nextHit = -1;
 
@@ -214,17 +226,26 @@ Renderer::Renderer(int w, int h, GeoGraph graph, RenderingTarget &target) :
 
     };
 
-    renderThreads = vector<thread>(100);
     for (int i = 0; i < renderThreadAmount; i++)
         renderThreads.emplace_back(renderThread, ref(threadContext));
 
     auto outThread = [](RenderingTarget &target, ThreadContext &threadContext) {
 
-        while (true) {
+        while (!threadContext.close || !threadContext.renderBuffers.empty()) {
             auto t1 = chrono::high_resolution_clock::now();
             threadContext.debug("# waiting for a new frame", 1);
-            while (threadContext.renderBuffers.empty())
-                int a = 0;
+            while (threadContext.renderBuffers.empty()) {
+                unique_lock<mutex> ul(threadContext.newDataCondMutex, defer_lock_t());
+                ul.lock();
+                threadContext.debug("# waiting", 1);
+                threadContext.newDataCond.wait(ul, [&]() {
+                    threadContext.renderQueueMutex.lock();
+                    bool b = threadContext.renderQueue.empty();
+                    threadContext.renderQueueMutex.unlock();
+                    return !b;
+                });
+                ul.unlock();
+            }
             threadContext.debug("# waiting for frame to finish rendering...", 1);
             threadContext.renderBuffers.front()->waitFull();
             threadContext.debug("# got full frame", 1);
@@ -246,6 +267,11 @@ Renderer::Renderer(int w, int h, GeoGraph graph, RenderingTarget &target) :
 }
 
 void Renderer::render(State startState, double scale) {
+    if (threadContext.close) {
+        threadContext.debug("m ERROR: was asked to render frame but closed");
+        return;
+    }
+
     vector<u8> data(w * h * 3);
 
     threadContext.debug("m initializing render");
@@ -256,8 +282,13 @@ void Renderer::render(State startState, double scale) {
     threadContext.debug("m locking mutex...", 5);
     threadContext.renderQueueMutex.lock();
     threadContext.debug("m finished", 5);
+
+    vec2 dir = glm::normalize(startState.dir);
+
+    mat2 rotationMatrix(dir, vec2(-dir.y, dir.x));
     for (vector<Ray *> &rays: chunks) {
-        RenderChunk chunk(frameCount, renderBuffer, startState, scale, &rays);
+
+        RenderChunk chunk(frameCount, renderBuffer, startState, scale, &rays, rotationMatrix);
         threadContext.renderQueue.push(chunk);
     }
     threadContext.debug("m added chunks", 5);
@@ -270,6 +301,25 @@ void Renderer::render(State startState, double scale) {
 
 void Renderer::addLoggingTarget(LoggingTarget *target) {
     threadContext.loggingTargets.push_back(target);
+}
+
+void Renderer::close(bool wait) {
+    threadContext.debug("closing");
+    threadContext.close = true;
+    if (wait) {
+        threadContext.debug("waiting for end of execution");
+        for (thread &t : renderThreads) {
+            if (t.joinable()) {
+                threadContext.debug("joining render-thread");
+                t.join();
+            }
+        }
+        if (mainThread.joinable()) {
+            threadContext.debug("joining main-thread");
+            mainThread.join();
+        }
+        threadContext.debug("closed successfully");
+    }
 }
 
 
