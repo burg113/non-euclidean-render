@@ -201,20 +201,21 @@ Renderer::Renderer(int w, int h, GeoGraph graph, RenderingTarget &target) :
                 countAdd += 3 * (int) ray->renderPoints.size();
                 double trueScaleInverse = 100 / (chunk.scale * threadContext.width);
                 for (auto &[dist, index]: ray->renderPoints) {
-                    // traversing graph until the next point is hit
-                    float rayDist = (dist - lastDist) * trueScaleInverse;
-                    if (rayDist < nextHit) {
-                        nextHit -= rayDist;
-                        state.pos += state.dir * rayDist;
-                    } else {
-                        tie(state, nextHit) = threadContext.graph.traverse(state, rayDist);
+                    if (state.tri != -1) {
+                        // traversing graph until the next point is hit
+                        float rayDist = (dist - lastDist) * trueScaleInverse;
+                        if (rayDist < nextHit) {
+                            nextHit -= rayDist;
+                            state.pos += state.dir * rayDist;
+                        } else {
+                            tie(state, nextHit) = threadContext.graph.traverse(state, rayDist);
+                        }
                     }
-
                     if (state.tri == -1) {
                         // if the renderer got outside the mesh black is drawn
-                        chunk.rb->pixel[3 * index] = u8(1);
-                        chunk.rb->pixel[3 * index + 1] = u8(1);
-                        chunk.rb->pixel[3 * index + 2] = u8(1);
+                        chunk.rb->pixel[3 * index] = u8(0);
+                        chunk.rb->pixel[3 * index + 1] = u8(0);
+                        chunk.rb->pixel[3 * index + 2] = u8(3);
                     }else {
                         // writing out data - no mutex needed as no two threads should render the same part of the image
                         chunk.rb->pixel[3 * index] = u8(
