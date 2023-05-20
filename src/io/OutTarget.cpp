@@ -132,6 +132,43 @@ void ConsoleOut::debugNewLine(string &data, int level) {
     if (setMut) consoleAccessMut.unlock();
 }
 
+
+ScreenOut::ScreenOut(int width, int height, std::string title){
+    if(SDL_Init(SDL_INIT_VIDEO) < 0){
+        std::cout << "SDL could not be initialized!" << std::endl
+                  << "SDL_Error: " << SDL_GetError() << std::endl;
+        throw invalid_argument("SDL init error");
+    }
+    window = SDL_CreateWindow(title.c_str(),
+                                          SDL_WINDOWPOS_UNDEFINED,
+                                          SDL_WINDOWPOS_UNDEFINED,
+                                          width, height,
+                                          SDL_WINDOW_SHOWN);
+    if(!window){
+        std::cout << "Window could not be created!" << std::endl
+                  << "SDL_Error: " << SDL_GetError() << std::endl;
+        throw invalid_argument("SDL window init error");
+    }
+    sdlRenderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
+    buffer = SDL_CreateTexture(sdlRenderer,
+                               SDL_PIXELFORMAT_RGBA8888,
+                               SDL_TEXTUREACCESS_STREAMING,
+                               width,
+                               height);
+}
+
 void ScreenOut::writeOut(std::pair<int, int> resolution, vector<unsigned char> &data) {
-    // todo: implement
+    SDL_RenderClear(sdlRenderer);
+    void* pixels;
+    int pitch;
+    SDL_LockTexture(buffer, NULL, &pixels, &pitch);
+    memcpy(pixels, data.data(), pitch*resolution.second);
+    SDL_UnlockTexture(buffer);
+    SDL_RenderCopy(sdlRenderer, buffer, NULL, NULL);
+    SDL_RenderPresent(sdlRenderer);
+}
+
+ScreenOut::~ScreenOut() {
+    SDL_DestroyRenderer(sdlRenderer);
+    SDL_DestroyWindow(window);
 }

@@ -16,3 +16,4 @@ If you are on Windows, you need to tell CMAKE where to find the package. Put thi
 list(APPEND CMAKE_PREFIX_PATH path/to/library/folder) # or use ${CMAKE_CURRENT_SOURCE_DIR} for relative path
 ```
 After using CMAKE to configure the project, the location will be cached, so you can delete the line again.
+Then, you also need to move the .dll in the same folder as the binary.

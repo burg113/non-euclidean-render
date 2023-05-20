@@ -4,6 +4,8 @@
 #include "src/renderer/GeoGraph.h"
 #include "src/renderer/Renderer.h"
 
+#include <SDL.h>
+
 typedef unsigned char u8;
 
 const char pathSeparator = '/';
@@ -36,9 +38,9 @@ int main(int argc, char **argv) {
     outPath+= to_string((int)configParser.scale) + "/";
     outPath+= to_string(time.count() / 100000000) + "/";
 
-    FileOut fileRenderTarget(outPath, configParser.outFileName + ".png");
-    // ScreenOut screen;
-    Renderer renderer(configParser.width, configParser.height, graph, fileRenderTarget);
+    // FileOut fileRenderTarget(outPath, configParser.outFileName + ".png");
+    ScreenOut screen(configParser.width, configParser.height, "Non euclidean renderer");
+    Renderer renderer(configParser.width, configParser.height, graph, screen);
 
     State state;
     state.tri = 0;
@@ -64,7 +66,7 @@ int main(int argc, char **argv) {
     // renderer.addLoggingTarget(&logFile);
     renderer.addLoggingTarget(&consoleOut);
 
-    for (int i=0;i<10;i++)
+    for (int i=0;i<100;i++)
         renderer.render(state, configParser.scale);
 
     //renderer.mainThread.join();

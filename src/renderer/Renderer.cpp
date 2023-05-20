@@ -198,7 +198,7 @@ Renderer::Renderer(int w, int h, GeoGraph graph, RenderingTarget &target) :
                 float lastDist = 0;
                 float nextHit = -1;
 
-                countAdd += 3 * (int) ray->renderPoints.size();
+                countAdd += 4 * (int) ray->renderPoints.size();
                 double trueScaleInverse = 100 / (chunk.scale * threadContext.width);
                 for (auto &[dist, index]: ray->renderPoints) {
                     if (state.tri != -1) {

@@ -8,6 +8,7 @@
 #include <string>
 #include <vector>
 #include <mutex>
+#include <SDL.h>
 #include "interface/RenderingTarget.h"
 #include "interface/LoggingTarget.h"
 
@@ -79,7 +80,14 @@ private:
 };
 
 struct ScreenOut : RenderingTarget {
+    SDL_Window* window;
+    SDL_Renderer* sdlRenderer;
+    SDL_Texture* buffer;
+
+    ScreenOut(int width, int height, std::string title);
     void writeOut(std::pair<int, int> resolution, std::vector<unsigned char> &data);
+
+    ~ScreenOut();
 };
 
 #endif //NON_EUCLIDEAN_RENDER_OUTTARGET_H
