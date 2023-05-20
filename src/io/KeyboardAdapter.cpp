@@ -13,12 +13,10 @@ KeyboardAdapter::KeyboardAdapter() {
 void KeyboardAdapter::update() {
     SDL_Event event;
     while(SDL_PollEvent(&event) ) {
-        std::cerr << "hi";
         if(event.type == SDL_KEYDOWN)
             keys[event.key.keysym.scancode] = true;
         if(event.type == SDL_KEYUP)
             keys[event.key.keysym.scancode] = false;
-
     }
 
 

@@ -24,7 +24,7 @@ add_executable(non_euclidean_render
 
         src/util/MathUtil.cpp
         src/util/MathUtil.h
-        )
+        src/io/KeyboardAdapter.cpp src/io/KeyboardAdapter.h)
 
 include_directories(
         lib/single_header/

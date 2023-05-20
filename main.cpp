@@ -3,6 +3,7 @@
 #include "src/io/OBJ_parser.h"
 #include "src/renderer/GeoGraph.h"
 #include "src/renderer/Renderer.h"
+#include "src/io/KeyboardAdapter.h"
 
 #include <SDL.h>
 
@@ -65,9 +66,16 @@ int main(int argc, char **argv) {
     // comment out for disabling writing to file:
     // renderer.addLoggingTarget(&logFile);
     renderer.addLoggingTarget(&consoleOut);
+    KeyboardAdapter keyboardAdapter;
+    float angle = 0;
+    while(true) {
+        if (keyboardAdapter.isDown(SDL_Scancode::SDL_SCANCODE_SPACE))
+            angle += 0.1;
 
-    for (int i=0;i<100;i++)
+        std::this_thread::sleep_for(std::chrono::milliseconds(50));
+        state.dir = {cos(angle),sin(angle)};
         renderer.render(state, configParser.scale);
+    }
 
     //renderer.mainThread.join();
     renderer.close(true);
