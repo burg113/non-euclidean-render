@@ -63,7 +63,9 @@ int main(int argc, char **argv) {
     renderer.addLoggingTarget(&consoleOut);
     */
 
-    RacingGame racingGame(renderer, graph);
+    Texture texture(configParser.texturePath);
+
+    RacingGame racingGame(renderer, graph, texture);
     racingGame.run();
 
     cout << "\n" << "done!";

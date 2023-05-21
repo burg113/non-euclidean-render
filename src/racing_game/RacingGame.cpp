@@ -13,7 +13,7 @@
 using glm::mat2;
 using namespace std;
 
-RacingGame::RacingGame(Renderer &renderer, GeoGraph graph) : graph(graph), renderer(renderer){}
+RacingGame::RacingGame(Renderer &renderer, GeoGraph graph, Texture texture) : graph(graph), renderer(renderer), texture(texture){}
 
 void RacingGame::run() {
     State state;
@@ -47,7 +47,7 @@ void RacingGame::run() {
         state = graph.traverse(state,speed).first;
 
         state.dir = {state.dir.y,-state.dir.x};
-        renderer.render(state, 50);
+        renderer.render(state, 50, texture);
     }
 
     renderer.close(true);

@@ -13,9 +13,10 @@
 struct RacingGame {
     GeoGraph graph;
     Renderer &renderer;
-    int framerate = 200;
+    Texture texture;
+    int framerate = 60;
 
-    RacingGame(Renderer &renderer, GeoGraph graph);
+    RacingGame(Renderer &renderer, GeoGraph graph, Texture texture);
 
     void run();
 

@@ -42,6 +42,7 @@ void ConfigParser::loadConfig(string tryFirst) {
         string basePath = input.substr(0, input.find_last_of(pathSeparator) + 1);
 
         meshPath = basePath + readFromTable(table, {"mesh", "file"}, "","error: missing mesh path");
+        texturePath = basePath + readFromTable(table, {"mesh", "texture"}, "", "error: missing texture path");
         outPath = basePath + readFromTable(table, {"output", "path"},"");
         outFileName = readFromTable(table, {"output", "filename"},"");
         scale = readFromTable(table, {"render", "scale"},1.0);

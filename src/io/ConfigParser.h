@@ -11,6 +11,7 @@
 struct ConfigParser {
     const char pathSeparator = '/';
     std::string meshPath;
+    std::string texturePath;
     std::string outPath;
     std::string outFileName;
     int width;

@@ -5,12 +5,36 @@
 #include <thread>
 #include <queue>
 #include <utility>
+
+#include <stb_image.h>
+
 #include "Renderer.h"
 #include "glm/matrix.hpp"
 
 using namespace std;
 using glm::mat2;
 using glm::vec2, glm::normalize, glm::length;
+
+Texture::Texture(vector<u8> &&pixels, int width, int height) : pixels(pixels), width(width), height(height) {}
+Texture::Texture(const string &file) {
+    int channels;
+    u8* data = stbi_load(file.c_str(), &width, &height, &channels, 4);
+    cout << "Channels: " << channels << endl;
+    pixels.resize(width*height*4);
+    memcpy(pixels.data(), data, pixels.size());
+}
+
+std::tuple<u8, u8, u8, u8> Texture::getColor(float u, float v) {
+    int i = (int)round(width * u);
+    int j = height - (int)round(height * v);
+    i = clamp(i, 0, width-1);
+    j = clamp(j, 0, height-1);
+    int start = 4*(width*j+i);
+    return {pixels[start], pixels[start+1], pixels[start+2], pixels[start+3]};
+//    return {0, 0, 255*u, 255*v};
+}
+
+
 
 void ThreadContext::log(std::string str) {
     for (LoggingTarget *target: loggingTargets)
@@ -35,7 +59,7 @@ RenderChunk::RenderChunk(int frame, RenderBuffer *rb, const State &start, double
         : frame(frame), rb(rb), start(start), scale(scale), rays(rays), rotationMatrix(rotationMatrix) {};
 
 
-RenderBuffer::RenderBuffer(int frame, int size) : frame(frame) {
+RenderBuffer::RenderBuffer(int frame, int size, Texture texture) : frame(frame), texture(texture) {
     pixel = std::vector<u8>(size, 48);
 }
 
@@ -219,13 +243,19 @@ Renderer::Renderer(int w, int h, GeoGraph graph, RenderingTarget &target) :
                         chunk.rb->pixel[4 * index + 3] = u8(255);
                     }else {
                         // writing out data - no mutex needed as no two threads should render the same part of the image
-                        chunk.rb->pixel[4 * index] = u8(
-                                127 + 120 * threadContext.graph.triangles[state.tri].normal3d.x);
-                        chunk.rb->pixel[4 * index + 1] = u8(
-                                127 + 120 * threadContext.graph.triangles[state.tri].normal3d.y);
-                        chunk.rb->pixel[4 * index + 2] = u8(
-                                127 + 120 * threadContext.graph.triangles[state.tri].normal3d.z);
-                        chunk.rb->pixel[4 * index + 3] = u8(255);
+                        vec2 uv = threadContext.graph.triangles[state.tri].getUV(state.pos);
+                        auto [r, g, b, a] = chunk.rb->texture.getColor(uv.x, uv.y);
+//                        chunk.rb->pixel[4 * index + 3] = u8(
+//                                127 + 120 * threadContext.graph.triangles[state.tri].normal3d.x);
+//                        chunk.rb->pixel[4 * index + 2] = u8(
+//                                127 + 120 * threadContext.graph.triangles[state.tri].normal3d.y);
+//                        chunk.rb->pixel[4 * index + 1] = u8(
+//                                127 + 120 * threadContext.graph.triangles[state.tri].normal3d.z);
+//                        chunk.rb->pixel[4 * index + 0] = u8(255);
+                        chunk.rb->pixel[4 * index] = a;
+                        chunk.rb->pixel[4 * index + 1] = b;
+                        chunk.rb->pixel[4 * index + 2] = g;
+                        chunk.rb->pixel[4 * index + 3] = r;
                     }
                     lastDist = dist;
                 }
@@ -281,7 +311,7 @@ Renderer::Renderer(int w, int h, GeoGraph graph, RenderingTarget &target) :
     mainThread = thread(outThread, ref(renderingTarget), ref(threadContext));
 }
 
-void Renderer::render(State startState, double scale) {
+void Renderer::render(State startState, double scale, Texture texture) {
     if (threadContext.close) {
         threadContext.debug("m ERROR: was asked to render frame but closed");
         return;
@@ -293,7 +323,7 @@ void Renderer::render(State startState, double scale) {
 
     threadContext.debug("m initializing render");
     threadContext.debug("m adding new renderBuffer...", 1);
-    RenderBuffer *renderBuffer = new RenderBuffer(frameCount, threadContext.width * threadContext.height * 4);
+    RenderBuffer *renderBuffer = new RenderBuffer(frameCount, threadContext.width * threadContext.height * 4, texture);
     threadContext.renderBuffers.push_back(renderBuffer);
 
     threadContext.debug("m locking mutex...", 5);
@@ -339,6 +369,3 @@ void Renderer::close(bool wait) {
         threadContext.debug("closed successfully");
     }
 }
-
-
-

@@ -10,6 +10,8 @@
 #include <vector>
 #include <condition_variable>
 
+#include <SDL.h>
+
 #include "../io/OBJ_parser.h"
 #include "GeoGraph.h"
 #include "../io/OutTarget.h"
@@ -19,6 +21,15 @@ typedef unsigned char u8;
 struct Ray {
     glm::vec2 direction;
     std::vector<std::pair<float, int>> renderPoints;
+};
+
+struct Texture{
+    int width, height;
+    std::vector<u8> pixels;
+    Texture(std::vector<u8>&& pixels, int w, int h);
+    explicit Texture(const std::string& file);
+    std::tuple<u8, u8, u8, u8> getColor(float u, float v);
+    // TODO: maybe add getColor function with interpolation
 };
 
 struct RenderBuffer {
@@ -33,9 +44,10 @@ private:
 
 public:
     std::vector<u8> pixel;
+    Texture texture;
     const int frame;
 
-    RenderBuffer(int frame, int size);
+    RenderBuffer(int frame, int size, Texture texture);
 
     void notifyCount(int add);
 
@@ -103,7 +115,7 @@ struct Renderer {
 
     Renderer(int w, int h, GeoGraph graph, RenderingTarget &target);
 
-    void render(State startState, double scale);
+    void render(State startState, double scale, Texture texture);
 
     void addLoggingTarget(LoggingTarget *target);
 

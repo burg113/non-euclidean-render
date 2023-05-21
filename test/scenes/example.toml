@@ -2,11 +2,12 @@
 [mesh]
 # file = "../models/cube.obj"
 file = "../models/sphere_ico_64.obj" # relative to this file
+texture = "../textures/cppmap.png"
 
 [render]
-width = 1920
-height = 1080
-scale = 20
+width = 1280
+height = 720
+scale = 10
 
 [output]
 path = "../../test/out/" # relative to this file
